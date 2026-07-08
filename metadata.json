@@ -1,0 +1,14 @@
+{
+  "name": "Soka Usajili Pro",
+  "description": "Mfumo wa kisasa wa usajili wa timu, wachezaji, na usimamizi wa ratiba za mpira wa miguu.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "Usajili wa Timu na Wachezaji",
+    "Uthibitisho wa Malipo",
+    "Ratiba na Matokeo ya Mechi",
+    "Admin Dashboard"
+  ]
+}

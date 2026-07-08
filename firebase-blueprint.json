@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "RegistrationPeriod": {
+      "title": "Registration Period",
+      "description": "Kipindi cha kufanya usajili wa timu",
+      "type": "object",
+      "properties": {
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean" },
+        "seasonName": { "type": "string" }
+      },
+      "required": ["startDate", "endDate", "isActive", "seasonName"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "Taarifa za timu ya soka",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "managerId": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["PENDING", "CONFIRMED", "REJECTED"] },
+        "paymentProofUrl": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isApproved": { "type": "boolean" }
+      },
+      "required": ["name", "managerId", "paymentStatus"]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "Taarifa za mchezaji",
+      "type": "object",
+      "properties": {
+        "teamId": { "type": "string" },
+        "name": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "position": { "type": "string" },
+        "jerseyNumber": { "type": "number" },
+        "idNumber": { "type": "string" }
+      },
+      "required": ["teamId", "name", "photoUrl", "position"]
+    },
+    "Staff": {
+      "title": "Technical Bench",
+      "description": "Benchi la ufundi",
+      "type": "object",
+      "properties": {
+        "teamId": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "photoUrl": { "type": "string" }
+      },
+      "required": ["teamId", "name", "role", "photoUrl"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Ratiba ya mechi",
+      "type": "object",
+      "properties": {
+        "homeTeamId": { "type": "string" },
+        "awayTeamId": { "type": "string" },
+        "homeTeamName": { "type": "string" },
+        "awayTeamName": { "type": "string" },
+        "matchDate": { "type": "string", "format": "date-time" },
+        "scoreHome": { "type": "number" },
+        "scoreAway": { "type": "number" },
+        "status": { "type": "string", "enum": ["SCHEDULED", "LIVE", "FINISHED"] },
+        "venue": { "type": "string" }
+      },
+      "required": ["homeTeamId", "awayTeamId", "matchDate", "status"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "Taarifa za mtumiaji wa mfumo",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "TEAM_MANAGER"] },
+        "displayName": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/registrationPeriods/{periodId}": {
+      "schema": "RegistrationPeriod",
+      "description": "Kipindi cha usajili"
+    },
+    "/teams/{teamId}": {
+      "schema": "Team",
+      "description": "Timu zilizosajiliwa"
+    },
+    "/players/{playerId}": {
+      "schema": "Player",
+      "description": "Wachezaji wa timu"
+    },
+    "/staff/{staffId}": {
+      "schema": "Staff",
+      "description": "Benchi la ufundi"
+    },
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Ratiba na matokeo"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Wasifu wa watumiaji"
+    }
+  }
+}
