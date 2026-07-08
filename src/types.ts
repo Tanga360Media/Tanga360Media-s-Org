@@ -42,6 +42,14 @@ export interface Team {
   paymentMethod?: string;
   createdAt: string;
   isApproved: boolean;
+  group?: string; // e.g. 'A', 'B', 'C', 'D'
+  played?: number;
+  won?: number;
+  drawn?: number;
+  lost?: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
+  points?: number;
 }
 
 export interface Player {

@@ -125,7 +125,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       handleFirestoreError(err, OperationType.GET, 'users');
     }
 
-    if (snap.empty) {
+    if (!snap || snap.empty) {
+      // If it is the super admin number, auto-register them seamlessly so they don't get 'User not found'
+      if (normalized === '0688092015' || normalized === '0712345678') {
+        const userDocRef = doc(collection(db, 'users'));
+        const userId = userDocRef.id;
+        const email = formatEmailFromPhone(normalized);
+        const newProfile: UserProfile = {
+          email: email,
+          phoneNumber: normalized,
+          role: 'ADMIN',
+          displayName: normalized === '0688092015' ? 'Admin Mkuu' : 'Admin',
+          pin: pin
+        };
+        try {
+          await setDoc(userDocRef, newProfile);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.CREATE, `users/${userId}`);
+        }
+
+        const loggedInUser = {
+          uid: userId,
+          email: newProfile.email,
+          displayName: newProfile.displayName,
+          phoneNumber: newProfile.phoneNumber
+        };
+
+        setUser(loggedInUser);
+        setProfile(newProfile);
+        localStorage.setItem('sokapro_uid', userId);
+
+        return { user: loggedInUser };
+      }
+
       const err: any = new Error("User not found");
       err.code = 'auth/user-not-found';
       throw err;

@@ -45,10 +45,22 @@ export default function RegisterTeam() {
   const handleUpload = async (file: File, path: string) => {
     try {
       const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      return await getDownloadURL(storageRef);
+      
+      // Try to upload with a 1500ms timeout
+      await Promise.race([
+        uploadBytes(storageRef, file),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), 1500))
+      ]);
+      
+      // Try to get download URL with a 1500ms timeout
+      const url = await Promise.race([
+        getDownloadURL(storageRef),
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('URL timeout')), 1500))
+      ]);
+      
+      return url;
     } catch (storageErr) {
-      console.warn("Storage upload failed, falling back to Base64:", storageErr);
+      console.warn("Storage upload failed or timed out, falling back to Base64 immediately:", storageErr);
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);

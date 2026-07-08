@@ -23,14 +23,15 @@ import {
   Plus, 
   Trophy,
   ExternalLink,
-  CreditCard
+  CreditCard,
+  Layers
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
-  const [activeTab, setActiveTab] = useState<'approvals' | 'periods' | 'matches'>('approvals');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'periods' | 'matches' | 'groups'>('approvals');
   const [approvalFilter, setApprovalFilter] = useState<'PENDING' | 'CONFIRMED' | 'REJECTED'>('PENDING');
   const [periods, setPeriods] = useState<RegistrationPeriod[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -132,6 +133,17 @@ export default function AdminDashboard() {
     }
   };
 
+  const updateTeamStandings = async (
+    teamId: string, 
+    fields: Partial<Pick<Team, 'group' | 'played' | 'won' | 'drawn' | 'lost' | 'goalsFor' | 'goalsAgainst' | 'points'>>
+  ) => {
+    try {
+      await updateDoc(doc(db, 'teams', teamId), fields);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `teams/${teamId}`);
+    }
+  };
+
   if (profile?.role !== 'ADMIN') {
     return <div className="p-12 text-center text-red-600 font-bold">Huna ruhusa ya kuingia hapa.</div>;
   }
@@ -150,7 +162,8 @@ export default function AdminDashboard() {
         {[
           { id: 'approvals', label: 'Uthibitisho', icon: CheckCircle },
           { id: 'periods', label: 'Madirisha', icon: Calendar },
-          { id: 'matches', label: 'Ratiba', icon: Trophy }
+          { id: 'matches', label: 'Ratiba', icon: Trophy },
+          { id: 'groups', label: 'Makundi & Msimamo', icon: Layers }
         ].map(tab => (
           <button
             key={tab.id}
@@ -370,6 +383,146 @@ export default function AdminDashboard() {
                     </div>
                  </div>
                ))}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'groups' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Usimamizi wa Makundi na Msimamo</h3>
+                  <p className="text-xs text-slate-500">Panga timu zilizothibitishwa kwenye makundi na urekebishe takwimu za alama za ushindi.</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider font-bold">
+                      <th className="py-3 px-4">Nembo & Timu</th>
+                      <th className="py-3 px-4">Kundi</th>
+                      <th className="py-3 px-4 text-center">Mechi (P)</th>
+                      <th className="py-3 px-4 text-center">Shinda (W)</th>
+                      <th className="py-3 px-4 text-center">Sare (D)</th>
+                      <th className="py-3 px-4 text-center">Poteza (L)</th>
+                      <th className="py-3 px-4 text-center">GF</th>
+                      <th className="py-3 px-4 text-center">GA</th>
+                      <th className="py-3 px-4 text-center">Alama (PTS)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {teams.filter(t => t.isApproved).length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                          Hakuna timu zilizothibitishwa bado. Thibitisha timu kwenye tab ya "Uthibitisho".
+                        </td>
+                      </tr>
+                    ) : (
+                      teams.filter(t => t.isApproved).map(team => (
+                        <tr key={team.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-4 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-50 p-1 border border-slate-100 shrink-0 flex items-center justify-center">
+                              {team.logoUrl ? (
+                                <img src={team.logoUrl} className="w-full h-full object-contain" alt="" />
+                              ) : (
+                                <Trophy size={14} className="text-slate-300" />
+                              )}
+                            </div>
+                            <span className="font-bold text-slate-800">{team.name}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <select
+                              value={team.group || ''}
+                              onChange={e => updateTeamStandings(team.id, { group: e.target.value || undefined })}
+                              className="bg-slate-100 font-bold border-none rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            >
+                              <option value="">Bila Kundi</option>
+                              <option value="A">Kundi A</option>
+                              <option value="B">Kundi B</option>
+                              <option value="C">Kundi C</option>
+                              <option value="D">Kundi D</option>
+                              <option value="E">Kundi E</option>
+                              <option value="F">Kundi F</option>
+                            </select>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              key={`${team.id}-played-${team.played || 0}`}
+                              defaultValue={team.played || 0}
+                              onBlur={e => updateTeamStandings(team.id, { played: parseInt(e.target.value) || 0 })}
+                              className="w-12 text-center bg-slate-50 border border-slate-100 rounded-lg p-1 font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              key={`${team.id}-won-${team.won || 0}`}
+                              defaultValue={team.won || 0}
+                              onBlur={e => updateTeamStandings(team.id, { won: parseInt(e.target.value) || 0 })}
+                              className="w-12 text-center bg-slate-50 border border-slate-100 rounded-lg p-1 font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              key={`${team.id}-drawn-${team.drawn || 0}`}
+                              defaultValue={team.drawn || 0}
+                              onBlur={e => updateTeamStandings(team.id, { drawn: parseInt(e.target.value) || 0 })}
+                              className="w-12 text-center bg-slate-50 border border-slate-100 rounded-lg p-1 font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              key={`${team.id}-lost-${team.lost || 0}`}
+                              defaultValue={team.lost || 0}
+                              onBlur={e => updateTeamStandings(team.id, { lost: parseInt(e.target.value) || 0 })}
+                              className="w-12 text-center bg-slate-50 border border-slate-100 rounded-lg p-1 font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              key={`${team.id}-goalsFor-${team.goalsFor || 0}`}
+                              defaultValue={team.goalsFor || 0}
+                              onBlur={e => updateTeamStandings(team.id, { goalsFor: parseInt(e.target.value) || 0 })}
+                              className="w-12 text-center bg-slate-50 border border-slate-100 rounded-lg p-1 font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              key={`${team.id}-goalsAgainst-${team.goalsAgainst || 0}`}
+                              defaultValue={team.goalsAgainst || 0}
+                              onBlur={e => updateTeamStandings(team.id, { goalsAgainst: parseInt(e.target.value) || 0 })}
+                              className="w-12 text-center bg-slate-50 border border-slate-100 rounded-lg p-1 font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              key={`${team.id}-points-${team.points || 0}`}
+                              defaultValue={team.points || 0}
+                              onBlur={e => updateTeamStandings(team.id, { points: parseInt(e.target.value) || 0 })}
+                              className="w-12 text-center bg-blue-50 border border-blue-100 text-blue-700 rounded-lg p-1 font-extrabold focus:outline-none focus:bg-white focus:border-blue-500"
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </motion.div>
         )}

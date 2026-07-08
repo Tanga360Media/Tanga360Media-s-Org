@@ -18,7 +18,8 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
-  DollarSign
+  DollarSign,
+  Layers
 } from 'lucide-react';
 import { formatDate, cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
@@ -31,6 +32,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [scheduleFilter, setScheduleFilter] = useState<'ALL' | 'SCHEDULED' | 'FINISHED'>('ALL');
+  const [homeTab, setHomeTab] = useState<'matches' | 'standings'>('matches');
 
   useEffect(() => {
     // Live Matches
@@ -339,140 +341,312 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="h-8 w-1.5 bg-blue-600 rounded-full"></div>
             <div>
-              <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Kituo cha Ratiba & Matokeo</h2>
-              <p className="text-slate-500 text-xs">Fuatilia mechi zote za ligi zilizopangwa na mabao ya hivi punde.</p>
+              <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight font-sans">Kituo cha Ratiba & Msimamo</h2>
+              <p className="text-slate-500 text-xs">Fuatilia mechi zote za ligi zilizopangwa na msimamo wa hivi punde wa kila kundi.</p>
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-            {/* Group Tab Buttons */}
-            <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-              {[
-                { id: 'ALL', label: 'Zote' },
-                { id: 'SCHEDULED', label: 'Zijazo' },
-                { id: 'FINISHED', label: 'Zilizokwisha' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setScheduleFilter(tab.id as any)}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-black uppercase transition-all whitespace-nowrap cursor-pointer",
-                    scheduleFilter === tab.id 
-                      ? "bg-white text-blue-600 shadow-sm" 
-                      : "text-slate-500 hover:text-slate-700"
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Custom Search Box */}
-            <div className="relative">
-              <span className="absolute left-4 top-3 text-slate-400">
-                <Search size={16} />
-              </span>
-              <input
-                type="text"
-                placeholder="Tafuta kwa timu au uwanja..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full md:w-64 pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-150 transition-all text-slate-800"
-              />
-            </div>
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 self-start lg:self-auto shadow-inner">
+            <button
+              onClick={() => setHomeTab('matches')}
+              className={cn(
+                "px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all cursor-pointer",
+                homeTab === 'matches' 
+                  ? "bg-white text-blue-600 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Ratiba & Matokeo
+            </button>
+            <button
+              onClick={() => setHomeTab('standings')}
+              className={cn(
+                "px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all cursor-pointer",
+                homeTab === 'standings' 
+                  ? "bg-white text-blue-600 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Msimamo wa Makundi
+            </button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-20 bg-white rounded-3xl border border-slate-100">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-          </div>
-        ) : filteredMatches.length === 0 ? (
-          <div className="bg-white rounded-3xl py-20 text-center border border-slate-100 shadow-sm">
-            <Trophy size={48} className="mx-auto text-slate-300 mb-3" />
-            <p className="text-slate-505 font-medium text-slate-500">Hakuna mechi zilizopatikana zenye vigezo hivi.</p>
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')} 
-                className="text-blue-600 hover:underline font-bold text-xs mt-2"
-              >
-                Futa utafutaji
-              </button>
+        {homeTab === 'matches' ? (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                {[
+                  { id: 'ALL', label: 'Zote' },
+                  { id: 'SCHEDULED', label: 'Zijazo' },
+                  { id: 'FINISHED', label: 'Zilizokwisha' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setScheduleFilter(tab.id as any)}
+                    className={cn(
+                      "px-4 py-2 rounded-lg text-xs font-black uppercase transition-all whitespace-nowrap cursor-pointer",
+                      scheduleFilter === tab.id 
+                        ? "bg-white text-blue-600 shadow-sm" 
+                        : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Search Box */}
+              <div className="relative">
+                <span className="absolute left-4 top-3 text-slate-400">
+                  <Search size={16} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Tafuta kwa timu au uwanja..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full md:w-64 pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-150 transition-all text-slate-800"
+                />
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-20 bg-white rounded-3xl border border-slate-100">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              </div>
+            ) : filteredMatches.length === 0 ? (
+              <div className="bg-white rounded-3xl py-20 text-center border border-slate-100 shadow-sm">
+                <Trophy size={48} className="mx-auto text-slate-300 mb-3" />
+                <p className="text-slate-500 font-medium">Hakuna mechi zilizopatikana zenye vigezo hivi.</p>
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')} 
+                    className="text-blue-600 hover:underline font-bold text-xs mt-2"
+                  >
+                    Futa utafutaji
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                {filteredMatches.map((match) => (
+                  <motion.div
+                    key={match.id}
+                    layout
+                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow group"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-12 items-center p-6 md:p-8 gap-4 text-center md:text-left">
+                      {/* Home Team */}
+                      <div className="md:col-span-4 flex flex-col md:items-end gap-1">
+                        <span className="font-extrabold text-lg md:text-2xl text-slate-900 group-hover:text-blue-600 transition-colors">{match.homeTeamName}</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block">MWENYEJI / NYUMBANI</span>
+                      </div>
+
+                      {/* Score / Center Info */}
+                      <div className="md:col-span-4 flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50/50 md:bg-transparent">
+                        <div className="flex items-center gap-6 mb-2">
+                          <span className={cn(
+                            "text-3xl md:text-5xl font-black tabular-nums tracking-tighter animate-fade-in",
+                            match.status === 'FINISHED' ? "text-slate-900" : "text-slate-300"
+                          )}>
+                            {match.scoreHome ?? '-'}
+                          </span>
+                          <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest">VS</div>
+                          <span className={cn(
+                            "text-3xl md:text-5xl font-black tabular-nums tracking-tighter animate-fade-in",
+                            match.status === 'FINISHED' ? "text-slate-900" : "text-slate-300"
+                          )}>
+                            {match.scoreAway ?? '-'}
+                          </span>
+                        </div>
+                        
+                        <div className="mt-1">
+                          {match.status === 'SCHEDULED' ? (
+                            <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Imepangwa</span>
+                          ) : match.status === 'LIVE' ? (
+                            <span className="bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-pulse flex items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-white block animate-ping"></span>
+                              MUBASHARA
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Umeisha</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Away Team */}
+                      <div className="md:col-span-4 flex flex-col md:items-start gap-1">
+                        <span className="font-extrabold text-lg md:text-2xl text-slate-900 group-hover:text-blue-600 transition-colors">{match.awayTeamName}</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block">GENG / UBALINI</span>
+                      </div>
+                    </div>
+
+                    {/* Match Footer Info */}
+                    <div className="bg-slate-50 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-slate-100 text-xs">
+                      <div className="flex flex-wrap items-center justify-center gap-6 text-slate-500">
+                        <span className="flex items-center gap-2">
+                          <Calendar size={14} className="text-blue-500" />
+                          <strong className="text-slate-700">{formatDate(match.matchDate)}</strong>
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <MapPin size={14} className="text-blue-500" />
+                          <span>Uwanja: <strong className="text-slate-700">{match.venue || 'Uwanja haujatajwa'}</strong></span>
+                        </span>
+                      </div>
+                      
+                      <div className="text-slate-400 font-mono text-[10px]">
+                        ID: {match.id.substring(0, 8).toUpperCase()}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6">
-            {filteredMatches.map((match) => (
-              <motion.div
-                key={match.id}
-                layout
-                className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow group"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-12 items-center p-6 md:p-8 gap-4 text-center md:text-left">
-                  {/* Home Team */}
-                  <div className="md:col-span-4 flex flex-col md:items-end gap-1">
-                    <span className="font-extrabold text-lg md:text-2xl text-slate-900 group-hover:text-blue-600 transition-colors">{match.homeTeamName}</span>
-                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block">MWENYEJI / NYUMBANI</span>
-                  </div>
+          /* Msimamo wa Makundi (Group Standings Component) */
+          <div className="grid grid-cols-1 gap-12">
+            {['A', 'B', 'C', 'D', 'E', 'F']
+              .filter(groupLetter => teams.some(t => t.isApproved && t.group === groupLetter))
+              .map(groupLetter => {
+                const groupTeams = teams
+                  .filter(t => t.isApproved && t.group === groupLetter)
+                  .sort((a, b) => {
+                    const ptsA = a.points || 0;
+                    const ptsB = b.points || 0;
+                    if (ptsB !== ptsA) return ptsB - ptsA;
 
-                  {/* Score / Center Info */}
-                  <div className="md:col-span-4 flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50/50 md:bg-transparent">
-                    <div className="flex items-center gap-6 mb-2">
-                      <span className={cn(
-                        "text-3xl md:text-5xl font-black tabular-nums tracking-tighter animate-fade-in",
-                        match.status === 'FINISHED' ? "text-slate-900" : "text-slate-300"
-                      )}>
-                        {match.scoreHome ?? '-'}
-                      </span>
-                      <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest">VS</div>
-                      <span className={cn(
-                        "text-3xl md:text-5xl font-black tabular-nums tracking-tighter animate-fade-in",
-                        match.status === 'FINISHED' ? "text-slate-905 text-slate-905 text-slate-900" : "text-slate-300"
-                      )}>
-                        {match.scoreAway ?? '-'}
-                      </span>
+                    const gdA = (a.goalsFor || 0) - (a.goalsAgainst || 0);
+                    const gdB = (b.goalsFor || 0) - (b.goalsAgainst || 0);
+                    if (gdB !== gdA) return gdB - gdA;
+
+                    return (b.goalsFor || 0) - (a.goalsFor || 0);
+                  });
+
+                return (
+                  <motion.div
+                    key={groupLetter}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden"
+                  >
+                    {/* Header */}
+                    <div className="bg-slate-900 text-white p-6 flex items-center justify-between border-b border-slate-800">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 text-white font-black text-sm h-8 w-8 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                          {groupLetter}
+                        </div>
+                        <h3 className="font-extrabold text-base md:text-lg tracking-tight font-sans">Kundi {groupLetter}</h3>
+                      </div>
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400">Msimamo wa Kundi</span>
                     </div>
-                    
-                    <div className="mt-1">
-                      {match.status === 'SCHEDULED' ? (
-                        <span className="bg-slate-100 text-slate-605 text-slate-600 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Imepangwa</span>
-                      ) : match.status === 'LIVE' ? (
-                        <span className="bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-pulse flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-white block animate-ping"></span>
-                          MUBASHARA
-                        </span>
-                      ) : (
-                        <span className="bg-emerald-50 text-emerald-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Umeisha</span>
-                      )}
+
+                    {/* Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs md:text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-100 text-[10px] md:text-xs text-slate-400 font-extrabold uppercase tracking-wider">
+                            <th className="py-4 px-4 md:px-6 text-center w-16">Nafasi</th>
+                            <th className="py-4 px-4">Timu</th>
+                            <th className="py-4 px-2 text-center w-12">M (P)</th>
+                            <th className="py-4 px-2 text-center w-12">W</th>
+                            <th className="py-4 px-2 text-center w-12">D</th>
+                            <th className="py-4 px-2 text-center w-12">L</th>
+                            <th className="py-4 px-2 text-center w-20">Mabao</th>
+                            <th className="py-4 px-2 text-center w-12">GD</th>
+                            <th className="py-4 px-4 md:px-6 text-center w-20 text-blue-600 font-black">PTS</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50 font-medium">
+                          {groupTeams.map((team, idx) => {
+                            const isLeader = idx === 0;
+                            const isRunnerUp = idx === 1;
+                            const goalDiff = (team.goalsFor || 0) - (team.goalsAgainst || 0);
+
+                            return (
+                              <tr 
+                                key={team.id} 
+                                className={cn(
+                                  "hover:bg-slate-50/40 transition-colors",
+                                  isLeader ? "bg-emerald-50/5" : ""
+                                )}
+                              >
+                                {/* Position */}
+                                <td className="py-4 px-4 md:px-6 text-center">
+                                  <span className={cn(
+                                    "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-black",
+                                    isLeader ? "bg-emerald-100 text-emerald-700" : 
+                                    isRunnerUp ? "bg-blue-100 text-blue-700" : 
+                                    "text-slate-400"
+                                  )}>
+                                    {idx + 1}
+                                  </span>
+                                </td>
+
+                                {/* Team Name */}
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-50 p-1 border border-slate-100 shrink-0 flex items-center justify-center">
+                                      {team.logoUrl ? (
+                                        <img src={team.logoUrl} className="w-full h-full object-contain" alt="" />
+                                      ) : (
+                                        <Trophy size={14} className="text-slate-300" />
+                                      )}
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="font-extrabold text-slate-800">{team.name}</span>
+                                      {isLeader && (
+                                        <span className="text-[9px] font-black uppercase text-emerald-600 tracking-wider">Inaongoza Kundi</span>
+                                      )}
+                                      {isRunnerUp && (
+                                        <span className="text-[9px] font-black uppercase text-blue-600 tracking-wider">Nafasi ya Pili</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Matches Played */}
+                                <td className="py-4 px-2 text-center text-slate-600 font-mono">{team.played || 0}</td>
+                                {/* Won */}
+                                <td className="py-4 px-2 text-center text-slate-600 font-mono">{team.won || 0}</td>
+                                {/* Drawn */}
+                                <td className="py-4 px-2 text-center text-slate-600 font-mono">{team.drawn || 0}</td>
+                                {/* Lost */}
+                                <td className="py-4 px-2 text-center text-slate-600 font-mono">{team.lost || 0}</td>
+                                {/* GF : GA */}
+                                <td className="py-4 px-2 text-center text-slate-600 font-mono">{team.goalsFor || 0}:{team.goalsAgainst || 0}</td>
+                                {/* GD */}
+                                <td className={cn(
+                                  "py-4 px-2 text-center font-mono font-bold",
+                                  goalDiff > 0 ? "text-emerald-600" : goalDiff < 0 ? "text-rose-500" : "text-slate-400"
+                                )}>
+                                  {goalDiff > 0 ? `+${goalDiff}` : goalDiff}
+                                </td>
+                                {/* Points */}
+                                <td className="py-4 px-4 md:px-6 text-center text-blue-600 font-black font-mono text-base bg-blue-50/20">
+                                  {team.points || 0}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  </div>
+                  </motion.div>
+                );
+              })}
 
-                  {/* Away Team */}
-                  <div className="md:col-span-4 flex flex-col md:items-start gap-1">
-                    <span className="font-extrabold text-lg md:text-2xl text-slate-900 group-hover:text-blue-600 transition-colors">{match.awayTeamName}</span>
-                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block">GENG / UBALINI</span>
-                  </div>
-                </div>
-
-                {/* Match Footer Info */}
-                <div className="bg-slate-50 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-slate-100 text-xs">
-                  <div className="flex flex-wrap items-center justify-center gap-6 text-slate-500">
-                    <span className="flex items-center gap-2">
-                      <Calendar size={14} className="text-blue-500" />
-                      <strong className="text-slate-700">{formatDate(match.matchDate)}</strong>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <MapPin size={14} className="text-blue-500" />
-                      <span>Uwanja: <strong className="text-slate-700">{match.venue || 'Uwanja haujatajwa'}</strong></span>
-                    </span>
-                  </div>
-                  
-                  <div className="text-slate-400 font-mono text-[10px]">
-                    ID: {match.id.substring(0, 8).toUpperCase()}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+            {/* Empty state if no teams assigned to groups */}
+            {!['A', 'B', 'C', 'D', 'E', 'F'].some(groupLetter => teams.some(t => t.isApproved && t.group === groupLetter)) && (
+              <div className="bg-white rounded-[2rem] py-16 text-center border border-slate-105 border-slate-100 shadow-sm max-w-md mx-auto">
+                <Layers size={48} className="mx-auto text-slate-300 mb-3" />
+                <h4 className="text-slate-800 font-bold text-base mb-1 font-sans">Msimamo Bado Haujaandaliwa</h4>
+                <p className="text-slate-500 text-xs leading-relaxed px-6">
+                  Wasimamizi wa ligi bado hawajapanga timu kwenye makundi. Endelea kufuatilia ukurasa huu kwa sasisho hivi punde!
+                </p>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -558,9 +732,9 @@ export default function Home() {
           <div>
             <h4 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] mb-3">Msaada na Mawasiliano</h4>
             <ul className="space-y-2 text-[11px]">
-              <li className="flex items-center gap-1.5"><Phone size={12} /> +255 712 345 678</li>
-              <li className="flex items-center gap-1.5"><Building size={12} /> Dar es Salaam, Tanzania</li>
-              <li className="flex items-center gap-1.5">Barua Pepe: info@sokapro.com</li>
+              <li className="flex items-center gap-1.5"><Phone size={12} /> +255 688 092 015</li>
+              <li className="flex items-center gap-1.5"><Building size={12} /> Tanga, Tanzania</li>
+              <li className="flex items-center gap-1.5">Barua Pepe: chreesonlinemedia@gmail.com</li>
             </ul>
           </div>
           <div>
@@ -569,7 +743,7 @@ export default function Home() {
           </div>
         </div>
         <div className="border-t border-slate-100 pt-6 text-[11px] text-center">
-          &copy; {new Date().getFullYear()} Soka Pro. Haki zote zimehifadhiwa. <span className="font-bold text-slate-500">Imetengenezwa Tanzania kwa ajili ya Ligi Bora na soka safi.</span>
+          &copy; {new Date().getFullYear()} Soka Pro. Imetengenezwa na tanga360media.
         </div>
       </footer>
 
