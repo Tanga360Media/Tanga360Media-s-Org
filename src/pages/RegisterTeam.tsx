@@ -28,20 +28,34 @@ export default function RegisterTeam() {
     
     // Check if user already registered a team
     const checkTeam = async () => {
-      const q = query(collection(db, 'teams'), where('managerId', '==', user?.uid));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        setExistingTeam({ id: snap.docs[0].id, ...snap.docs[0].data() });
-        navigate('/team');
+      try {
+        const q = query(collection(db, 'teams'), where('managerId', '==', user?.uid));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          setExistingTeam({ id: snap.docs[0].id, ...snap.docs[0].data() });
+          navigate('/team');
+        }
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, 'teams');
       }
     };
     if (user) checkTeam();
   }, [user]);
 
   const handleUpload = async (file: File, path: string) => {
-    const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-    await uploadBytes(storageRef, file);
-    return getDownloadURL(storageRef);
+    try {
+      const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      return await getDownloadURL(storageRef);
+    } catch (storageErr) {
+      console.warn("Storage upload failed, falling back to Base64:", storageErr);
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

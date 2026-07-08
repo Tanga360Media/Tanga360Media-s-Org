@@ -22,7 +22,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import { cn } from './lib/utils';
 
 function Navbar() {
-  const { user, profile, logout } = useAuth();
+  const { user, profile, logout, setRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -55,6 +55,21 @@ function Navbar() {
             <Link to="/register-team" className={cn("px-4 py-2 rounded-xl font-bold text-sm transition-all", location.pathname === '/register-team' ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50")}>Sajili Timu</Link>
             {user ? (
               <>
+                {/* Role Switcher */}
+                <button
+                  onClick={() => setRole(isAdmin ? 'TEAM_MANAGER' : 'ADMIN')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl font-bold text-xs border transition-all flex items-center gap-1.5 mr-2 cursor-pointer",
+                    isAdmin 
+                      ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" 
+                      : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                  )}
+                  title="Badili Jukumu"
+                >
+                  <ShieldCheck size={14} />
+                  <span>{isAdmin ? 'Meneja (Mchezaji)' : 'Kuwa Admin'}</span>
+                </button>
+
                 {isAdmin ? (
                   <Link to="/admin" className={cn("px-4 py-2 rounded-xl font-bold text-sm transition-all", location.pathname.startsWith('/admin') ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-50")}>Admin Panel</Link>
                 ) : (
@@ -111,6 +126,22 @@ function Navbar() {
               </Link>
               {user ? (
                 <>
+                  <button
+                    onClick={() => {
+                      setRole(isAdmin ? 'TEAM_MANAGER' : 'ADMIN');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={cn(
+                      "mx-4 my-2 px-4 py-2 rounded-xl font-bold text-xs border transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                      isAdmin 
+                        ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100" 
+                        : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                    )}
+                  >
+                    <ShieldCheck size={14} />
+                    <span>Hali ya sasa: {isAdmin ? 'Msimamizi (Admin)' : 'Meneja wa Timu'}</span>
+                  </button>
+
                   {isAdmin ? (
                     <Link 
                       to="/admin" 

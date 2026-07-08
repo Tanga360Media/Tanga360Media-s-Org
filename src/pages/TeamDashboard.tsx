@@ -53,6 +53,8 @@ export default function TeamDashboard() {
         setTeam({ id: snap.docs[0].id, ...snap.docs[0].data() } as Team);
       }
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'teams');
     });
 
     return () => unsubTeam();
@@ -64,11 +66,15 @@ export default function TeamDashboard() {
     const qPlayers = query(collection(db, 'players'), where('teamId', '==', team.id));
     const unsubPlayers = onSnapshot(qPlayers, (snap) => {
       setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Player)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'players');
     });
 
     const qStaff = query(collection(db, 'staff'), where('teamId', '==', team.id));
     const unsubStaff = onSnapshot(qStaff, (snap) => {
       setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() } as Staff)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'staff');
     });
 
     return () => {
@@ -78,9 +84,19 @@ export default function TeamDashboard() {
   }, [team]);
 
   const uploadPhoto = async (file: File, type: 'players' | 'staff') => {
-    const storageRef = ref(storage, `${type}/${Date.now()}_${file.name}`);
-    await uploadBytes(storageRef, file);
-    return getDownloadURL(storageRef);
+    try {
+      const storageRef = ref(storage, `${type}/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      return await getDownloadURL(storageRef);
+    } catch (storageErr) {
+      console.warn("Storage upload failed, falling back to Base64:", storageErr);
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
   };
 
   const handleAddPlayer = async (e: React.FormEvent) => {

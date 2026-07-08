@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Match, RegistrationPeriod, Team } from '../types';
+import { Match, RegistrationPeriod, Team, OperationType } from '../types';
+import { handleFirestoreError } from '../lib/firestore-errors';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Calendar, 
@@ -37,18 +38,24 @@ export default function Home() {
     const unsubscribeMatches = onSnapshot(q, (snapshot) => {
       setMatches(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match)));
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'matches');
     });
 
     // Active Registration Windows
     const pQ = query(collection(db, 'registrationPeriods'));
     const unsubscribePeriods = onSnapshot(pQ, (snapshot) => {
       setPeriods(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RegistrationPeriod)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'registrationPeriods');
     });
 
     // Teams for live stats counting
     const tQ = query(collection(db, 'teams'));
     const unsubscribeTeams = onSnapshot(tQ, (snapshot) => {
       setTeams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'teams');
     });
 
     return () => {

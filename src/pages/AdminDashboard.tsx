@@ -49,14 +49,20 @@ export default function AdminDashboard() {
   useEffect(() => {
     const unsubTeams = onSnapshot(collection(db, 'teams'), (snap) => {
       setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() } as Team)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'teams');
     });
 
     const unsubPeriods = onSnapshot(collection(db, 'registrationPeriods'), (snap) => {
       setPeriods(snap.docs.map(d => ({ id: d.id, ...d.data() } as RegistrationPeriod)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'registrationPeriods');
     });
 
     const unsubMatches = onSnapshot(query(collection(db, 'matches'), orderBy('matchDate', 'asc')), (snap) => {
       setMatches(snap.docs.map(d => ({ id: d.id, ...d.data() } as Match)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'matches');
     });
 
     return () => {
