@@ -27,7 +27,7 @@ import {
   Info,
   Trophy
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, compressImage } from '../lib/utils';
 
 export default function TeamDashboard() {
   const { user } = useAuth();
@@ -85,29 +85,42 @@ export default function TeamDashboard() {
 
   const uploadPhoto = async (file: File, type: 'players' | 'staff') => {
     try {
-      const storageRef = ref(storage, `${type}/${Date.now()}_${file.name}`);
+      // Compress image first to keep file size extremely small (~50KB-150KB)
+      const compressedFile = await compressImage(file);
+      const storageRef = ref(storage, `${type}/${Date.now()}_${compressedFile.name}`);
       
-      // Try to upload with a 1500ms timeout
+      // Try to upload with a 15000ms (15s) timeout
       await Promise.race([
-        uploadBytes(storageRef, file),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), 1500))
+        uploadBytes(storageRef, compressedFile),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), 15000))
       ]);
       
-      // Try to get download URL with a 1500ms timeout
+      // Try to get download URL with a 5000ms (5s) timeout
       const url = await Promise.race([
         getDownloadURL(storageRef),
-        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('URL timeout')), 1500))
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('URL timeout')), 5000))
       ]);
       
       return url;
     } catch (storageErr) {
-      console.warn("Storage upload failed or timed out, falling back to Base64 immediately:", storageErr);
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      console.warn("Storage upload failed or timed out, falling back to compressed Base64:", storageErr);
+      // Even in fallback, we use the compressed version so Firestore document size remains tiny!
+      try {
+        const compressedFile = await compressImage(file);
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(compressedFile);
+        });
+      } catch (fallbackErr) {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
     }
   };
 
@@ -197,13 +210,15 @@ export default function TeamDashboard() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 w-full md:w-auto">
-           <div className="text-center p-3 md:p-4 bg-slate-50 rounded-2xl border border-slate-100">
+           <div className="text-center p-3 md:p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-center">
              <div className="text-xl md:text-2xl font-black text-slate-900">{players.length}/25</div>
              <div className="text-[10px] font-bold text-slate-400 uppercase">Wachezaji</div>
+             <div className="text-[9px] text-slate-500 font-medium mt-1">Upeo: 25</div>
            </div>
-           <div className="text-center p-3 md:p-4 bg-slate-50 rounded-2xl border border-slate-100">
+           <div className="text-center p-3 md:p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-center">
              <div className="text-xl md:text-2xl font-black text-slate-900">{staff.length}/5</div>
-             <div className="text-[10px] font-bold text-slate-400 uppercase">Bench</div>
+             <div className="text-[10px] font-bold text-slate-400 uppercase">Benchi</div>
+             <div className="text-[9px] text-slate-500 font-medium mt-1">Upeo: 5</div>
            </div>
         </div>
       </div>
@@ -232,8 +247,19 @@ export default function TeamDashboard() {
       {/* Tab Content */}
       <div className="min-h-[400px]">
         {activeTab === 'overview' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-            <h3 className="text-xl font-bold mb-6">Hali ya Usajili</h3>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+            <h3 className="text-xl font-bold">Hali ya Usajili</h3>
+
+            <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl flex gap-4 items-start shadow-sm">
+              <CheckCircle className="text-emerald-600 shrink-0 mt-0.5" size={20} />
+              <div>
+                <h4 className="font-extrabold text-emerald-800 text-sm">Idadi ya Usajili ni Hiyari (Upeo wa Juu)</h4>
+                <p className="text-emerald-700 text-xs mt-1.5 leading-relaxed">
+                  Timu yako inaweza kukamilisha usajili na idadi yoyote ya wachezaji (hadi 25) na benchi la ufundi (hadi 5). <strong>Sio lazima kabisa</strong> kuwa na wachezaji 25 au viongozi 5 ili usajili ukubaliwe. Unaweza kuwa na wachezaji wachache na bado ukathibitishwa na kuingizwa kwenye ratiba!
+                </p>
+              </div>
+            </div>
+
             {team.paymentStatus !== 'CONFIRMED' && (
               <div className="bg-orange-50 border border-orange-200 p-6 rounded-2xl flex gap-4 items-start mb-6">
                 <ShieldAlert className="text-orange-600 shrink-0" />
@@ -276,8 +302,11 @@ export default function TeamDashboard() {
 
         {activeTab === 'players' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <div className="flex justify-between items-center">
-               <h3 className="text-2xl font-black text-slate-900">Orodha ya Wachezaji</h3>
+            <div className="flex justify-between items-center gap-4">
+               <div>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-900">Orodha ya Wachezaji</h3>
+                  <p className="text-slate-500 text-[11px] md:text-xs">Upeo ni wachezaji 25. Sio lazima kufikisha wachezaji 25 kamili ili kukamilisha usajili.</p>
+               </div>
                <button 
                  onClick={() => setIsAddingPlayer(true)}
                  disabled={players.length >= 25}
@@ -320,8 +349,11 @@ export default function TeamDashboard() {
 
         {activeTab === 'staff' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <div className="flex justify-between items-center">
-               <h3 className="text-2xl font-black text-slate-900">Benchi la Ufundi</h3>
+            <div className="flex justify-between items-center gap-4">
+               <div>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-900">Benchi la Ufundi</h3>
+                  <p className="text-slate-500 text-[11px] md:text-xs">Upeo ni viongozi 5. Sio lazima kufikisha viongozi 5 kamili ili kukamilisha usajili.</p>
+               </div>
                <button 
                  onClick={() => setIsAddingStaff(true)}
                  disabled={staff.length >= 5}

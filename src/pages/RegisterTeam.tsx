@@ -8,7 +8,7 @@ import { db, storage } from '../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { motion } from 'motion/react';
 import { Upload, Trophy, CreditCard, ChevronRight, CheckCircle2 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, compressImage } from '../lib/utils';
 
 export default function RegisterTeam() {
   const { user, profile } = useAuth();
@@ -44,29 +44,42 @@ export default function RegisterTeam() {
 
   const handleUpload = async (file: File, path: string) => {
     try {
-      const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
+      // Compress image first to keep file size extremely small (~50KB-150KB)
+      const compressedFile = await compressImage(file);
+      const storageRef = ref(storage, `${path}/${Date.now()}_${compressedFile.name}`);
       
-      // Try to upload with a 1500ms timeout
+      // Try to upload with a 15000ms (15s) timeout
       await Promise.race([
-        uploadBytes(storageRef, file),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), 1500))
+        uploadBytes(storageRef, compressedFile),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), 15000))
       ]);
       
-      // Try to get download URL with a 1500ms timeout
+      // Try to get download URL with a 5000ms (5s) timeout
       const url = await Promise.race([
         getDownloadURL(storageRef),
-        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('URL timeout')), 1500))
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('URL timeout')), 5000))
       ]);
       
       return url;
     } catch (storageErr) {
-      console.warn("Storage upload failed or timed out, falling back to Base64 immediately:", storageErr);
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      console.warn("Storage upload failed or timed out, falling back to compressed Base64:", storageErr);
+      // Even in fallback, we use the compressed version so Firestore document size remains tiny!
+      try {
+        const compressedFile = await compressImage(file);
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(compressedFile);
+        });
+      } catch (fallbackErr) {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
     }
   };
 
