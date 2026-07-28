@@ -6,14 +6,16 @@ import { useNavigate } from 'react-router-dom';
 import tournamentLogo from '../assets/images/tournament_logo_1785243137783.jpg';
 
 export default function Login() {
-  const { loginWithPhone, registerWithPhone, user } = useAuth();
+  const { loginWithPhone, registerWithPhone, resetPinWithPhone, user } = useAuth();
   const navigate = useNavigate();
 
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
 
     if (!phone || phone.length < 8) {
@@ -46,15 +49,22 @@ export default function Login() {
     }
 
     try {
-      if (isRegistering) {
+      if (isResetting) {
+        await resetPinWithPhone(phone, pin);
+        setSuccessMsg('Neno la siri (PIN) limebadilishwa kikamilifu! Sasa unaweza kuingia kwa kutumia PIN yako mpya.');
+        setIsResetting(false);
+      } else if (isRegistering) {
         await registerWithPhone(phone, name, pin);
+        navigate('/');
       } else {
         await loginWithPhone(phone, pin);
+        navigate('/');
       }
-      navigate('/');
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      if (err.message && err.message.includes('haijasajiliwa')) {
+        setError(err.message);
+      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('Namba ya simu au PIN/Neno la siri sio sahihi.');
       } else if (err.code === 'auth/email-already-in-use') {
         setError('Namba hii ya simu tayari imesajiliwa. Tafadhali ingia.');
@@ -83,13 +93,21 @@ export default function Login() {
         </div>
         
         <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-center text-slate-900 mb-1.5 tracking-tight">
-          {isRegistering ? 'Jisajili UMTV CUP 2026' : 'Karibu UMTV CUP 2026'}
+          {isResetting ? 'Badilisha Neno la Siri' : isRegistering ? 'Jisajili UMTV CUP 2026' : 'Karibu UMTV CUP 2026'}
         </h1>
         <p className="text-slate-500 text-center text-xs sm:text-sm mb-6">
-          {isRegistering 
-            ? 'Weka taarifa zako kusajili akaunti ya usimamizi wa timu' 
-            : 'Ingiza namba yako ya simu na PIN ili kuendelea'}
+          {isResetting
+            ? 'Weka namba yako ya simu na uweke Neno la Siri (PIN) jipya'
+            : isRegistering 
+              ? 'Weka taarifa zako kusajili akaunti ya usimamizi wa timu' 
+              : 'Ingiza namba yako ya simu na PIN ili kuendelea'}
         </p>
+
+        {successMsg && (
+          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-2xl text-xs mb-6 font-bold">
+            {successMsg}
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl text-xs mb-6 font-bold">
@@ -98,7 +116,7 @@ export default function Login() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isRegistering && (
+          {!isResetting && isRegistering && (
             <div className="space-y-1">
               <label className="text-xs font-black text-slate-500 uppercase tracking-wider block">Jina Kamili</label>
               <div className="relative">
@@ -135,7 +153,9 @@ export default function Login() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-wider block">PIN / Neno la Siri</label>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-wider block">
+              {isResetting ? 'Neno la Siri / PIN Jipya' : 'PIN / Neno la Siri'}
+            </label>
             <div className="relative">
               <span className="absolute left-4 top-3.5 text-slate-400">
                 <Lock size={18} />
@@ -160,23 +180,49 @@ export default function Login() {
               'Inasindika...'
             ) : (
               <>
-                {isRegistering ? 'Tengeneza Akaunti' : 'Ingia Kwenye Akaunti'}
+                {isResetting ? 'Badilisha PIN / Neno la Siri' : isRegistering ? 'Tengeneza Akaunti' : 'Ingia Kwenye Akaunti'}
                 <ArrowRight size={16} />
               </>
             )}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => {
-              setIsRegistering(!isRegistering);
-              setError('');
-            }}
-            className="text-blue-600 hover:underline text-sm font-bold"
-          >
-            {isRegistering ? 'Tayari una akaunti? Ingia hapa' : 'Huna akaunti? Jisajili hapa'}
-          </button>
+        <div className="mt-6 flex flex-col gap-2 text-center">
+          {!isResetting && !isRegistering && (
+            <button
+              onClick={() => {
+                setIsResetting(true);
+                setError('');
+                setSuccessMsg('');
+              }}
+              className="text-amber-600 hover:underline text-xs font-extrabold"
+            >
+              Umesahau Neno la Siri / PIN?
+            </button>
+          )}
+
+          {isResetting ? (
+            <button
+              onClick={() => {
+                setIsResetting(false);
+                setError('');
+              }}
+              className="text-blue-600 hover:underline text-sm font-bold"
+            >
+              Rudi Kwenye Kuingia (Login)
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setError('');
+                setSuccessMsg('');
+              }}
+              className="text-blue-600 hover:underline text-sm font-bold"
+            >
+              {isRegistering ? 'Tayari una akaunti? Ingia hapa' : 'Huna akaunti? Jisajili hapa'}
+            </button>
+          )}
         </div>
 
         <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-2 text-slate-400 text-[11px] justify-center">

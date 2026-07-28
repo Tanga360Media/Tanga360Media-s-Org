@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { collection, doc, getDoc, setDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { OperationType } from '../types';
 import { handleFirestoreError } from '../lib/firestore-errors';
@@ -38,6 +38,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   loginWithPhone: (phone: string, pin: string) => Promise<any>;
   registerWithPhone: (phone: string, name: string, pin: string) => Promise<any>;
+  resetPinWithPhone: (phone: string, newPin: string) => Promise<any>;
   logout: () => Promise<void>;
   setRole: (role: 'ADMIN' | 'TEAM_MANAGER') => Promise<void>;
 }
@@ -237,6 +238,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { user: loggedInUser };
   };
 
+  const resetPinWithPhone = async (phone: string, newPin: string) => {
+    const normalized = normalizePhone(phone);
+    const q = query(collection(db, 'users'), where('phoneNumber', '==', normalized));
+    let snap;
+    try {
+      snap = await getDocs(q);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.GET, 'users');
+    }
+
+    if (!snap || snap.empty) {
+      const err: any = new Error("Namba hii ya simu haijasajiliwa kwenye mfumo.");
+      err.code = 'auth/user-not-found';
+      throw err;
+    }
+
+    const userDoc = snap.docs[0];
+    const userRef = doc(db, 'users', userDoc.id);
+    try {
+      await updateDoc(userRef, { pin: newPin });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `users/${userDoc.id}`);
+    }
+
+    return { success: true };
+  };
+
   const logout = async () => {
     localStorage.removeItem('sokapro_uid');
     setUser(null);
@@ -256,7 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, loginWithGoogle, loginWithPhone, registerWithPhone, logout, setRole }}>
+    <AuthContext.Provider value={{ user, profile, loading, loginWithGoogle, loginWithPhone, registerWithPhone, resetPinWithPhone, logout, setRole }}>
       {children}
     </AuthContext.Provider>
   );
