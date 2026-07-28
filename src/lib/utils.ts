@@ -13,7 +13,7 @@ export function formatDate(date: string | Date) {
   });
 }
 
-export function compressImage(file: File, maxWidth = 1000, maxHeight = 1000, quality = 0.7): Promise<File> {
+export function compressImage(file: File, maxWidth = 600, maxHeight = 600, quality = 0.65): Promise<File> {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/')) {
       resolve(file);

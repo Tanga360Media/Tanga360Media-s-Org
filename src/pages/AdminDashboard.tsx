@@ -104,7 +104,7 @@ export default function AdminDashboard() {
           ${p.photoUrl ? `<img src="${p.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<div style="padding-top: 20px; color: #94a3b8; font-size: 9px; font-weight: bold;">BILA PICHA</div>`}
         </div>
         <div style="font-weight: 800; font-size: 11px; color: #0f172a;">${p.name}</div>
-        <div style="font-size: 10px; color: #2563eb; font-weight: bold; margin-top: 2px;">#${p.jerseyNumber} &bull; ${p.position}</div>
+        ${p.jerseyNumber || p.position ? `<div style="font-size: 10px; color: #2563eb; font-weight: bold; margin-top: 2px;">${p.jerseyNumber ? `#${p.jerseyNumber}` : ''} ${p.position ? `&bull; ${p.position}` : ''}</div>` : ''}
         ${p.idNumber ? `<div style="font-size: 8px; color: #64748b; margin-top: 2px;">ID: ${p.idNumber}</div>` : ''}
       </div>
     `).join('') : '<p style="grid-column: span 4; font-size: 12px; color: #64748b; font-style: italic; padding: 10px; text-align: center;">Hakuna wachezaji waliosajiliwa kwenye fomu hii.</p>';

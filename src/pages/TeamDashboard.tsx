@@ -25,7 +25,10 @@ import {
   Camera,
   Settings,
   Info,
-  Trophy
+  Trophy,
+  Send,
+  Printer,
+  FileText
 } from 'lucide-react';
 import { cn, compressImage } from '../lib/utils';
 
@@ -40,8 +43,9 @@ export default function TeamDashboard() {
   // Form states
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
   const [isAddingStaff, setIsAddingStaff] = useState(false);
-  const [formData, setFormData] = useState({ name: '', position: '', jersey: '', role: '', photo: null as File | null });
+  const [formData, setFormData] = useState({ name: '', role: '', photo: null as File | null });
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -85,28 +89,27 @@ export default function TeamDashboard() {
 
   const uploadPhoto = async (file: File, type: 'players' | 'staff') => {
     try {
-      // Compress image first to keep file size extremely small (~50KB-150KB)
-      const compressedFile = await compressImage(file);
+      // Compress image first to keep file size extremely small (~25KB-45KB)
+      const compressedFile = await compressImage(file, 600, 600, 0.65);
       const storageRef = ref(storage, `${type}/${Date.now()}_${compressedFile.name}`);
       
-      // Try to upload with a 15000ms (15s) timeout
+      // Try to upload with a 2000ms (2s) timeout for ultra-fast performance
       await Promise.race([
         uploadBytes(storageRef, compressedFile),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), 15000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout')), 2000))
       ]);
       
-      // Try to get download URL with a 5000ms (5s) timeout
+      // Try to get download URL with a 2000ms (2s) timeout
       const url = await Promise.race([
         getDownloadURL(storageRef),
-        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('URL timeout')), 5000))
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('URL timeout')), 2000))
       ]);
       
       return url;
     } catch (storageErr) {
-      console.warn("Storage upload failed or timed out, falling back to compressed Base64:", storageErr);
-      // Even in fallback, we use the compressed version so Firestore document size remains tiny!
+      console.warn("Storage upload delayed or failed, using fast compressed Base64 Data URL:", storageErr);
       try {
-        const compressedFile = await compressImage(file);
+        const compressedFile = await compressImage(file, 600, 600, 0.65);
         return new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result as string);
@@ -133,12 +136,11 @@ export default function TeamDashboard() {
       await addDoc(collection(db, 'players'), {
         teamId: team.id,
         name: formData.name,
-        position: formData.position,
-        jerseyNumber: parseInt(formData.jersey),
-        photoUrl: url
+        photoUrl: url,
+        createdAt: new Date().toISOString()
       });
       setIsAddingPlayer(false);
-      setFormData({ name: '', position: '', jersey: '', role: '', photo: null });
+      setFormData({ name: '', role: '', photo: null });
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'players');
     } finally {
@@ -159,12 +161,161 @@ export default function TeamDashboard() {
         photoUrl: url
       });
       setIsAddingStaff(false);
-      setFormData({ name: '', position: '', jersey: '', role: '', photo: null });
+      setFormData({ name: '', role: '', photo: null });
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'staff');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleSubmitForm = async () => {
+    if (!team) return;
+    if (players.length === 0) {
+      alert("Tafadhali ongeza angalau mchezaji mmoja kabla ya kuwasilisha fomu rasmi ya usajili.");
+      return;
+    }
+    if (!confirm(`Je, unathibitisha kuwasilisha Fomu Rasmi ya Usajili ya timu yako (${team.name}) yenye wachezaji ${players.length} na viongozi ${staff.length} kwa Kamati Kuu?`)) {
+      return;
+    }
+
+    setIsSubmittingForm(true);
+    try {
+      await updateDoc(doc(db, 'teams', team.id), {
+        formSubmitted: true,
+        formSubmittedAt: new Date().toISOString()
+      });
+      alert("Fomu rasmi ya usajili ya timu yako imewasilishwa kikamilifu kwa Kamati Kuu UMTV CUP 2026!");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `teams/${team.id}`);
+    } finally {
+      setIsSubmittingForm(false);
+    }
+  };
+
+  const handlePrintRegistrationForm = () => {
+    if (!team) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Tafadhali ruhusu Pop-ups (Dirisha ibukizi) kwenye kivinjari chako ili kupakua au kuchapisha fomu ya usajili.");
+      return;
+    }
+
+    const playersHtml = players.length > 0 ? players.map((p) => `
+      <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; text-align: center; background: #ffffff; page-break-inside: avoid;">
+        <div style="width: 64px; height: 64px; margin: 0 auto 6px; border-radius: 50%; overflow: hidden; background: #f1f5f9; border: 2px solid #94a3b8;">
+          ${p.photoUrl ? `<img src="${p.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<div style="padding-top: 20px; color: #94a3b8; font-size: 9px; font-weight: bold;">BILA PICHA</div>`}
+        </div>
+        <div style="font-weight: 800; font-size: 11px; color: #0f172a;">${p.name}</div>
+      </div>
+    `).join('') : '<p style="grid-column: span 4; font-size: 12px; color: #64748b; font-style: italic; padding: 10px; text-align: center;">Hakuna wachezaji waliosajiliwa kwenye fomu hii.</p>';
+
+    const staffHtml = staff.length > 0 ? staff.map((s) => `
+      <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; text-align: center; background: #ffffff; page-break-inside: avoid;">
+        <div style="width: 64px; height: 64px; margin: 0 auto 6px; border-radius: 50%; overflow: hidden; background: #f1f5f9; border: 2px solid #94a3b8;">
+          ${s.photoUrl ? `<img src="${s.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<div style="padding-top: 20px; color: #94a3b8; font-size: 9px; font-weight: bold;">BILA PICHA</div>`}
+        </div>
+        <div style="font-weight: 800; font-size: 11px; color: #0f172a;">${s.name}</div>
+        <div style="font-size: 10px; color: #059669; font-weight: bold; margin-top: 2px; background: #ecfdf5; padding: 2px 6px; border-radius: 10px; display: inline-block;">${s.role}</div>
+      </div>
+    `).join('') : '<p style="grid-column: span 4; font-size: 12px; color: #64748b; font-style: italic; padding: 10px; text-align: center;">Hakuna viongozi waliosajiliwa kwenye fomu hii.</p>';
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="sw">
+        <head>
+          <meta charset="UTF-8">
+          <title>FOMU YA USAJILI - ${team.name.toUpperCase()} - UMTV CUP 2026</title>
+          <style>
+            @page { size: A4; margin: 12mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; color: #0f172a; background: #fff; }
+            .no-print { margin-bottom: 20px; text-align: right; }
+            .btn-print { background: #2563eb; color: #ffffff; border: none; padding: 12px 24px; font-size: 14px; font-weight: bold; border-radius: 10px; cursor: pointer; }
+            
+            .header { text-align: center; border-bottom: 3px double #2563eb; padding-bottom: 12px; margin-bottom: 20px; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 900; color: #1e3a8a; letter-spacing: 1px; }
+            .header h2 { margin: 4px 0 0; font-size: 13px; color: #2563eb; font-weight: 800; text-transform: uppercase; }
+            .badge { font-size: 11px; background: #eff6ff; color: #1d4ed8; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-top: 8px; font-weight: bold; border: 1px solid #bfdbfe; }
+            
+            .team-card { display: flex; align-items: center; gap: 20px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+            .team-logo { width: 85px; height: 85px; object-fit: contain; border-radius: 10px; background: #ffffff; border: 1px solid #cbd5e1; padding: 4px; flex-shrink: 0; }
+            
+            .section-title { font-size: 12px; font-weight: 900; color: #0f172a; text-transform: uppercase; border-bottom: 2px solid #334155; padding-bottom: 4px; margin: 20px 0 12px; letter-spacing: 0.5px; }
+            
+            .grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+            
+            .receipt-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; text-align: center; margin-top: 8px; }
+            .receipt-img { max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 6px; border: 1px solid #cbd5e1; }
+
+            .signatures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 60px; margin-top: 40px; padding-top: 20px; border-top: 1px dashed #cbd5e1; page-break-inside: avoid; }
+            .sig-box { text-align: center; }
+            .sig-line { border-bottom: 2px solid #334155; height: 40px; margin-bottom: 8px; }
+            .sig-title { font-size: 11px; font-weight: bold; color: #475569; text-transform: uppercase; }
+
+            @media print {
+              .no-print { display: none !important; }
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="no-print">
+            <button class="btn-print" onclick="window.print()">
+              🖨️ Chapisha au Pakua Fomu Kama PDF
+            </button>
+          </div>
+
+          <div class="header">
+            <h1>UMTV CUP 2026</h1>
+            <h2>FOMU RASMI YA USAJILI WA TIMU NA WACHEZAJI</h2>
+            <div class="badge">Tarehe ya Usajili: ${new Date(team.createdAt).toLocaleDateString()} &bull; Namba ya Usajili: #${team.id.substring(0, 8).toUpperCase()}</div>
+          </div>
+
+          <div class="team-card">
+            ${team.logoUrl ? `<img src="${team.logoUrl}" class="team-logo" />` : '<div style="width:75px; height:75px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; color:#64748b;">NEMBO YA TIMU</div>'}
+            <div style="flex: 1;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: 900; color: #0f172a;">${team.name}</h2>
+              <div style="display: flex; gap: 20px; margin-top: 8px; font-size: 12px; color: #334155;">
+                <div><strong>Hali ya Usajili:</strong> <span style="color: ${team.paymentStatus === 'CONFIRMED' ? '#16a34a' : team.paymentStatus === 'REJECTED' ? '#dc2626' : '#d97706'}; font-weight: 900;">${team.paymentStatus === 'CONFIRMED' ? 'IMETHIBITISHWA' : team.paymentStatus === 'REJECTED' ? 'IMEKATALIWA' : 'INASUBIRI MAPITIO'}</span></div>
+                <div><strong>Hali ya Fomu:</strong> <span style="color: ${team.formSubmitted ? '#16a34a' : '#d97706'}; font-weight: 900;">${team.formSubmitted ? 'IMEWASILISHWA' : 'BADO HAIJAWASILISHWA'}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">1. Orodha ya Wachezaji Waliosajiliwa (${players.length})</div>
+          <div class="grid-container">
+            ${playersHtml}
+          </div>
+
+          <div class="section-title">2. Benchi la Ufundi / Viongozi (${staff.length})</div>
+          <div class="grid-container">
+            ${staffHtml}
+          </div>
+
+          ${team.paymentProofUrl ? `
+            <div class="section-title">3. Uthibitisho wa Risiti ya Malipo</div>
+            <div class="receipt-box">
+              <img src="${team.paymentProofUrl}" class="receipt-img" />
+            </div>
+          ` : ''}
+
+          <div class="signatures">
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Saini na Muhuri wa Meneja wa Timu</div>
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Uthibitisho wa Kamati Kuu UMTV CUP</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   const handleDelete = async (id: string, type: 'players' | 'staff') => {
@@ -207,6 +358,20 @@ export default function TeamDashboard() {
             )}>
               {team.isApproved ? 'Umekubaliwa' : 'Inakaguliwa'}
             </span>
+            <span className={cn(
+              "px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1",
+              team.formSubmitted ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+            )}>
+              {team.formSubmitted ? <CheckCircle size={12} /> : <Clock size={12} />}
+              {team.formSubmitted ? 'Fomu Imewasilishwa' : 'Fomu Bado'}
+            </span>
+            <button
+              onClick={handlePrintRegistrationForm}
+              className="px-3 py-1 rounded-full text-[10px] md:text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+            >
+              <Printer size={12} />
+              <span>Pakua / Chapisha Fomu (PDF)</span>
+            </button>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 w-full md:w-auto">
@@ -247,8 +412,54 @@ export default function TeamDashboard() {
       {/* Tab Content */}
       <div className="min-h-[400px]">
         {activeTab === 'overview' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
-            <h3 className="text-xl font-bold">Hali ya Usajili</h3>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+            <h3 className="text-xl font-bold text-slate-900">Hali ya Usajili Wa Timu</h3>
+
+            {/* Form Submission Action Card */}
+            {team.formSubmitted ? (
+              <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-emerald-600 p-2.5 rounded-xl text-white shrink-0">
+                    <CheckCircle size={22} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-sm">Fomu ya Usajili Imewasilishwa</h4>
+                    <p className="text-slate-500 text-xs mt-0.5">
+                      Fomu rasmi ya timu yako imewasilishwa kwa Kamati Kuu UMTV CUP 2026.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handlePrintRegistrationForm}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-md transition-all cursor-pointer min-h-[42px] shrink-0 active:scale-95"
+                >
+                  <Printer size={16} />
+                  <span>Pakua Fomu Rasmi (PDF)</span>
+                </button>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white p-5 sm:p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-3 rounded-2xl shrink-0">
+                    <Send size={26} className="text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-base sm:text-lg">Kamilisha &amp; Wasilisha Fomu ya Usajili</h4>
+                    <p className="text-blue-100 text-xs mt-0.5 leading-relaxed">
+                      Umesajili wachezaji {players.length} na viongozi {staff.length}. Bofya hapa kuwasilisha fomu rasmi kwa Kamati Kuu.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSubmitForm}
+                  disabled={isSubmittingForm}
+                  className="w-full sm:w-auto bg-amber-400 hover:bg-amber-300 text-slate-900 font-black px-6 py-3 rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer shrink-0 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Send size={16} />
+                  <span>{isSubmittingForm ? "Inawasilisha..." : "Wasilisha Fomu Rasmi Sasa"}</span>
+                </button>
+              </div>
+            )}
 
             <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl flex gap-4 items-start shadow-sm">
               <CheckCircle className="text-emerald-600 shrink-0 mt-0.5" size={20} />
@@ -322,9 +533,6 @@ export default function TeamDashboard() {
                 <div key={player.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm relative group">
                   <div className="aspect-square bg-slate-100 relative">
                     <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 left-2 bg-blue-600 text-white w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-xs sm:text-sm shadow-md">
-                      {player.jerseyNumber}
-                    </div>
                     <button 
                       onClick={() => handleDelete(player.id, 'players')}
                       className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white p-2 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md active:scale-95"
@@ -333,9 +541,8 @@ export default function TeamDashboard() {
                       <Trash2 size={14} />
                     </button>
                   </div>
-                  <div className="p-3 sm:p-4">
+                  <div className="p-3 sm:p-4 text-center">
                     <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">{player.name}</h4>
-                    <p className="text-[10px] sm:text-xs font-bold text-blue-600 uppercase tracking-wider">{player.position}</p>
                   </div>
                 </div>
               ))}
@@ -414,24 +621,7 @@ export default function TeamDashboard() {
                    <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base" />
                  </div>
 
-                 {isAddingPlayer ? (
-                   <div className="grid grid-cols-2 gap-3">
-                     <div className="space-y-1">
-                       <label className="text-xs font-bold text-slate-500 uppercase">Nafasi</label>
-                       <select required value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full px-3 py-3 rounded-xl border border-slate-200 text-base bg-white">
-                          <option value="">Chagua</option>
-                          <option value="GK">Goal Keeper</option>
-                          <option value="DEF">Defender</option>
-                          <option value="MID">Midfielder</option>
-                          <option value="FWD">Forward</option>
-                       </select>
-                     </div>
-                     <div className="space-y-1">
-                       <label className="text-xs font-bold text-slate-500 uppercase">Jezi #</label>
-                       <input required type="number" value={formData.jersey} onChange={e => setFormData({...formData, jersey: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
-                     </div>
-                   </div>
-                 ) : (
+                 {isAddingStaff && (
                    <div className="space-y-1">
                      <label className="text-xs font-bold text-slate-500 uppercase">Wadhifa (Role)</label>
                      <input required type="text" placeholder="Mfano: Head Coach, Assistant, Doctor..." value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />

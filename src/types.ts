@@ -50,6 +50,8 @@ export interface Team {
   goalsFor?: number;
   goalsAgainst?: number;
   points?: number;
+  formSubmitted?: boolean;
+  formSubmittedAt?: string;
 }
 
 export interface Player {
@@ -57,8 +59,8 @@ export interface Player {
   teamId: string;
   name: string;
   photoUrl: string;
-  position: string;
-  jerseyNumber: number;
+  position?: string;
+  jerseyNumber?: number;
   idNumber?: string;
 }
 
