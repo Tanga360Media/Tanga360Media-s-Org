@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { Trophy, ShieldCheck, Phone, Lock, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import tournamentLogo from '../assets/images/tournament_logo_1785243137783.jpg';
 
 export default function Login() {
   const { loginWithPhone, registerWithPhone, user } = useAuth();
@@ -66,22 +67,25 @@ export default function Login() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[75vh] px-4">
+    <div className="flex flex-col items-center justify-center min-h-[75vh] px-1 sm:px-4 py-4">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-100"
+        className="bg-white p-5 sm:p-8 rounded-3xl shadow-xl max-w-md w-full border border-slate-100"
       >
-        <div className="flex justify-center mb-6">
-          <div className="bg-blue-600 p-4 rounded-2xl text-white shadow-lg shadow-blue-200">
-            <Trophy size={40} />
-          </div>
+        <div className="flex justify-center mb-4 sm:mb-6">
+          <img 
+            src={tournamentLogo} 
+            alt="UMTV CUP 2026 Logo" 
+            className="w-20 h-20 sm:w-24 sm:h-24 object-contain drop-shadow-xl p-1 bg-white rounded-2xl border border-slate-100" 
+            referrerPolicy="no-referrer" 
+          />
         </div>
         
-        <h1 className="text-2xl md:text-3xl font-black text-center text-slate-900 mb-2 tracking-tight">
-          {isRegistering ? 'Jisajili Soka Pro' : 'Karibu Soka Pro'}
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-center text-slate-900 mb-1.5 tracking-tight">
+          {isRegistering ? 'Jisajili UMTV CUP 2026' : 'Karibu UMTV CUP 2026'}
         </h1>
-        <p className="text-slate-500 text-center text-sm mb-8">
+        <p className="text-slate-500 text-center text-xs sm:text-sm mb-6">
           {isRegistering 
             ? 'Weka taarifa zako kusajili akaunti ya usimamizi wa timu' 
             : 'Ingiza namba yako ya simu na PIN ili kuendelea'}
@@ -106,7 +110,7 @@ export default function Login() {
                   placeholder="Mfano: John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-800"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-base focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-800 min-h-[44px]"
                   required
                 />
               </div>
@@ -124,7 +128,7 @@ export default function Login() {
                 placeholder="Mfano: 0712345678"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-800"
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-base focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-800 min-h-[44px]"
                 required
               />
             </div>
@@ -141,7 +145,7 @@ export default function Login() {
                 placeholder="Zisizopungua herufi au namba 6"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-800"
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-base focus:outline-none focus:border-blue-600 focus:bg-white transition-all text-slate-800 min-h-[44px]"
                 required
               />
             </div>
@@ -150,7 +154,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3.5 px-4 rounded-2xl font-bold text-sm shadow-lg shadow-blue-100 transition-all cursor-pointer disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3.5 px-4 rounded-2xl font-bold text-sm sm:text-base shadow-lg shadow-blue-100 transition-all cursor-pointer disabled:opacity-50 min-h-[48px] active:scale-[0.99]"
           >
             {loading ? (
               'Inasindika...'

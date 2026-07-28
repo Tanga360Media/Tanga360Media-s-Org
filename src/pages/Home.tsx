@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { formatDate, cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import tournamentLogo from '../assets/images/tournament_logo_1785243137783.jpg';
 
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -113,21 +114,29 @@ export default function Home() {
         </div>
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl"></div>
         
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center p-8 md:p-16">
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center p-6 sm:p-8 md:p-16">
           <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-full">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-              </span>
-              <span className="text-blue-300 text-xs font-black tracking-widest uppercase">Msimu Mpya 2026 UMEANZA</span>
+            <div className="flex items-center gap-3">
+              <img 
+                src={tournamentLogo} 
+                alt="UMTV CUP 2026 Logo" 
+                className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-xl bg-white p-1 rounded-2xl border border-blue-400/30" 
+                referrerPolicy="no-referrer" 
+              />
+              <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-full">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                <span className="text-blue-300 text-xs font-black tracking-widest uppercase">Msimu Mpya 2026 UMEANZA</span>
+              </div>
             </div>
             
             <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-none text-white">
-              Soka Usajili <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Pro</span>
+              UMTV CUP 2026 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">USAJILI</span>
             </h1>
             <p className="text-base md:text-lg max-w-xl leading-relaxed text-slate-300">
-              Tovuti kuu ya usajili, uratibu na usimamizi wa mechi za ligi za soka Tanzania. Unganisha timu yako, simamia wachezaji wako, na fuatilia ratiba na matokeo mubashara kutoka popote pale.
+              Tovuti kuu na rasmi ya usajili, uratibu na usimamizi wa mechi za UMTV CUP 2026. Unganisha timu yako, simamia wachezaji wako, na fuatilia ratiba na matokeo mubashara kutoka popote pale.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
@@ -247,7 +256,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-3 tracking-tight">Hatua za Usajili wa Timu</h2>
           <p className="text-slate-505 text-sm md:text-base leading-relaxed text-slate-500">
-            Soka Pro imerahisisha usajili kuwa mchakato wa kidijitali wa hatua nne pekee unaoweza kufanya kwa dakika 5.
+            UMTV CUP 2026 imerahisisha usajili kuwa mchakato wa kidijitali wa hatua nne pekee unaoweza kufanya kwa dakika 5.
           </p>
         </div>
 
@@ -721,13 +730,16 @@ export default function Home() {
       <footer className="border-t border-slate-200/80 pt-10 pb-4 text-center text-slate-400 text-xs">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="bg-blue-600 p-1.5 rounded-lg text-white">
-                <Trophy size={14} />
-              </div>
-              <span className="font-extrabold text-slate-800">Soka Pro TZ</span>
+            <div className="flex items-center gap-2.5 mb-3">
+              <img 
+                src={tournamentLogo} 
+                alt="UMTV CUP 2026 Logo" 
+                className="w-8 h-8 object-contain bg-white rounded-lg p-0.5 border border-slate-200" 
+                referrerPolicy="no-referrer" 
+              />
+              <span className="font-extrabold text-slate-800 text-sm">UMTV CUP 2026 USAJILI</span>
             </div>
-            <p className="text-[11px] leading-relaxed">Mfumo rasmi na wa kuaminika nchini Tanzania kwa ajili ya usajili wa viongozi, klabu, wachezaji na miamala sahihi ya ligi.</p>
+            <p className="text-[11px] leading-relaxed">Mfumo rasmi na wa kuaminika wa usajili wa viongozi, klabu, wachezaji na miamala sahihi ya UMTV CUP 2026.</p>
           </div>
           <div>
             <h4 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] mb-3">Msaada na Mawasiliano</h4>
@@ -739,11 +751,11 @@ export default function Home() {
           </div>
           <div>
             <h4 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] mb-3">Sheria na Kanuni</h4>
-            <p className="text-[11px] leading-relaxed">Timu zote lazima zifuate maadili sahihi ya soka na sheria za usajili za nchi, kuzuia faini au kutoingizwa kwenye msimamo wa mashindano rasmi.</p>
+            <p className="text-[11px] leading-relaxed">Timu zote lazima zifuate maadili sahihi ya soka na sheria za usajili za mashindano ya UMTV CUP 2026, kuzuia faini au kutoingizwa kwenye msimamo wa mashindano rasmi.</p>
           </div>
         </div>
         <div className="border-t border-slate-100 pt-6 text-[11px] text-center">
-          &copy; {new Date().getFullYear()} Soka Pro. Imetengenezwa na tanga360media.
+          &copy; {new Date().getFullYear()} UMTV CUP 2026 USAJILI. Imetengenezwa na tanga360media.
         </div>
       </footer>
 

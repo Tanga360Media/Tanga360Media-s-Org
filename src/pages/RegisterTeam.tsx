@@ -127,23 +127,23 @@ export default function RegisterTeam() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto px-1 sm:px-0">
       {/* Steps Indicator */}
-      <div className="flex justify-between mb-12">
+      <div className="flex justify-between mb-6 md:mb-12 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
         {[
           { n: 1, label: 'Taarifa za Timu' },
           { n: 2, label: 'Malipo' },
           { n: 3, label: 'Kamilisha' }
         ].map((s) => (
-          <div key={s.n} className="flex flex-col items-center gap-2 flex-1">
+          <div key={s.n} className="flex flex-col items-center gap-1.5 flex-1 text-center">
             <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors",
-              step >= s.n ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"
+              "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm transition-all shadow-sm",
+              step >= s.n ? "bg-blue-600 text-white shadow-blue-200" : "bg-slate-100 text-slate-400"
             )}>
-              {step > s.n ? <CheckCircle2 size={20} /> : s.n}
+              {step > s.n ? <CheckCircle2 size={16} className="sm:w-5 sm:h-5" /> : s.n}
             </div>
             <span className={cn(
-              "text-xs font-bold uppercase tracking-wider",
+              "text-[10px] sm:text-xs font-bold uppercase tracking-wider line-clamp-1",
               step >= s.n ? "text-blue-600" : "text-slate-400"
             )}>
               {s.label}
@@ -154,51 +154,54 @@ export default function RegisterTeam() {
 
       <motion.div
         key={step}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-3xl p-5 sm:p-8 shadow-xl border border-slate-100"
       >
         {step === 1 && (
-          <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
-                <Trophy size={28} />
+          <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-5 sm:space-y-6">
+            <div className="flex items-center gap-3 mb-2 sm:mb-6">
+              <div className="bg-blue-50 p-2.5 sm:p-3 rounded-2xl text-blue-600 shrink-0">
+                <Trophy size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900">Taarifa za Timu</h2>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900">Taarifa za Timu</h2>
+                <p className="text-slate-500 text-xs">Jaza jina na nembo ya timu yako</p>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">Jina la Timu</label>
+            <div className="space-y-1.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wide">Jina la Timu</label>
               <input
                 required
                 type="text"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 placeholder="Mfano: Simba SC, Yanga SC..."
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                className="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-base"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">Logo ya Timu (Picha)</label>
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-blue-400 transition-colors relative">
+            <div className="space-y-1.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wide">Nembo ya Timu (Logo/Picha)</label>
+              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-5 sm:p-8 text-center hover:border-blue-400 transition-colors relative bg-slate-50/50">
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setLogo(e.target.files?.[0] || null)}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  className="absolute inset-0 opacity-0 cursor-pointer min-h-[44px]"
                 />
-                <Upload className="mx-auto text-slate-400 mb-2" size={32} />
-                <p className="text-slate-600 font-medium">
-                  {logo ? logo.name : "Bonyeza hapa au buruta picha ya logo"}
+                <Upload className="mx-auto text-blue-500 mb-2" size={28} />
+                <p className="text-slate-700 font-bold text-xs sm:text-sm">
+                  {logo ? logo.name : "Bonyeza hapa kuchagua picha ya logo"}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">PNG, JPG hadi 5MB</p>
+                <p className="text-[10px] sm:text-xs text-slate-400 mt-1">Gusa kuchagua picha kutoka kwenye simu (PNG/JPG)</p>
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
+              className="w-full bg-blue-600 text-white py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-[0.99] min-h-[48px]"
             >
               Endelea <ChevronRight size={20} />
             </button>
@@ -206,26 +209,29 @@ export default function RegisterTeam() {
         )}
 
         {step === 2 && (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-green-50 p-3 rounded-2xl text-green-600">
-                <CreditCard size={28} />
+          <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+            <div className="flex items-center gap-3 mb-2 sm:mb-6">
+              <div className="bg-green-50 p-2.5 sm:p-3 rounded-2xl text-green-600 shrink-0">
+                <CreditCard size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900">Uthibitisho wa Malipo</h2>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900">Uthibitisho wa Malipo</h2>
+                <p className="text-slate-500 text-xs">Weka njia na risiti ya malipo</p>
+              </div>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
-              <h3 className="font-bold text-slate-800 mb-2">Maelekezo ya Malipo:</h3>
-              <p className="text-sm text-slate-600 mb-4">
-                Ada ya usajili ni <span className="font-bold text-slate-900">TZS 50,000</span>. Tafadhali lipa kupitia:
+            <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100">
+              <h3 className="font-bold text-slate-800 text-xs sm:text-sm mb-2">Maelekezo ya Malipo:</h3>
+              <p className="text-xs sm:text-sm text-slate-600 mb-3">
+                Ada ya usajili ni <span className="font-extrabold text-slate-900">TZS 50,000</span>. Tafadhali lipa kupitia:
               </p>
-              <ul className="space-y-2 text-sm text-slate-700">
+              <ul className="space-y-2 text-xs sm:text-sm text-slate-700">
                 <li className="flex justify-between border-b border-slate-200 pb-2">
-                  <span>M-PESA:</span>
-                  <span className="font-mono font-bold text-blue-600">07XX XXX XXX (CHREES MEDIA)</span>
+                  <span>M-PESA / Vodacom:</span>
+                  <span className="font-mono font-bold text-blue-600">0688 092 015</span>
                 </li>
                 <li className="flex justify-between border-b border-slate-200 pb-2">
-                  <span>Lipa kwa Simu:</span>
+                  <span>Lipa kwa Simu / Tigo:</span>
                   <span className="font-mono font-bold text-blue-600">512345</span>
                 </li>
                 <li className="flex justify-between">
@@ -235,52 +241,56 @@ export default function RegisterTeam() {
               </ul>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">Njia ya Malipo</label>
+            <div className="space-y-1.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wide">Njia Uliyotumia Kulipia</label>
               <select
                 required
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500"
+                className="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 outline-none focus:border-blue-500 text-base bg-white"
               >
-                <option value="">Chagua Njia</option>
-                <option value="M-PESA">M-PESA</option>
+                <option value="">Chagua Njia ya Malipo</option>
+                <option value="M-PESA">M-PESA (Vodacom)</option>
                 <option value="Tigo Pesa">Tigo Pesa</option>
-                <option value="Lipa kwa Simu">Lipa kwa Simu</option>
-                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Airtel Money">Airtel Money</option>
+                <option value="Halo Pesa">Halo Pesa</option>
+                <option value="Lipa kwa Simu">Lipa kwa Simu / Merchant</option>
+                <option value="Bank Transfer">Bank Transfer (CRDB/NMB)</option>
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">Ambatisha Risiti (Picha/PDF)</label>
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-blue-400 transition-colors relative">
+            <div className="space-y-1.5">
+              <label className="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wide">Ambatisha Risiti au Muamala (Picha)</label>
+              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-5 sm:p-8 text-center hover:border-blue-400 transition-colors relative bg-slate-50/50">
                 <input
                   required
                   type="file"
+                  accept="image/*"
                   onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  className="absolute inset-0 opacity-0 cursor-pointer min-h-[44px]"
                 />
-                <Upload className="mx-auto text-slate-400 mb-2" size={32} />
-                <p className="text-slate-600 font-medium">
-                  {paymentProof ? paymentProof.name : "Pandisha picha ya risiti hapa"}
+                <Upload className="mx-auto text-green-600 mb-2" size={28} />
+                <p className="text-slate-700 font-bold text-xs sm:text-sm">
+                  {paymentProof ? paymentProof.name : "Gusa hapa kupakia picha ya risiti ya benki au muamala"}
                 </p>
+                <p className="text-[10px] sm:text-xs text-slate-400 mt-1">Kukagua muamala kutoka kwenye nyumba ya matunzio (Gallery)</p>
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50"
+                className="flex-1 border border-slate-200 py-3.5 rounded-2xl font-bold text-slate-700 hover:bg-slate-50 text-sm min-h-[48px]"
               >
                 Rudi
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-[2] bg-blue-600 text-white py-4 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-[2] bg-blue-600 text-white py-3.5 rounded-2xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 text-sm shadow-lg shadow-blue-100 min-h-[48px] active:scale-[0.99]"
               >
-                {loading ? "Inatuma..." : "Kamilisha Usajili"}
+                {loading ? "Inatuma Risiti..." : "Kamilisha Usajili"}
               </button>
             </div>
           </form>

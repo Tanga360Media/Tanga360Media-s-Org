@@ -316,25 +316,26 @@ export default function TeamDashboard() {
                </button>
             </div>
 
-            {/* Players Grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Players Grid - 2 per row on mobile */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {players.map(player => (
                 <div key={player.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm relative group">
                   <div className="aspect-square bg-slate-100 relative">
                     <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 left-2 bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-black text-sm shadow-md">
+                    <div className="absolute top-2 left-2 bg-blue-600 text-white w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-xs sm:text-sm shadow-md">
                       {player.jerseyNumber}
                     </div>
-                  </div>
-                  <div className="p-4">
-                    <h4 className="font-bold text-slate-900 truncate">{player.name}</h4>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{player.position}</p>
                     <button 
                       onClick={() => handleDelete(player.id, 'players')}
-                      className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white p-2 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md active:scale-95"
+                      title="Futa mchezaji"
                     >
                       <Trash2 size={14} />
                     </button>
+                  </div>
+                  <div className="p-3 sm:p-4">
+                    <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">{player.name}</h4>
+                    <p className="text-[10px] sm:text-xs font-bold text-blue-600 uppercase tracking-wider">{player.position}</p>
                   </div>
                 </div>
               ))}
@@ -357,25 +358,26 @@ export default function TeamDashboard() {
                <button 
                  onClick={() => setIsAddingStaff(true)}
                  disabled={staff.length >= 5}
-                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-blue-100 disabled:opacity-50"
+                 className="flex items-center gap-2 bg-blue-600 text-white px-3.5 sm:px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-blue-100 disabled:opacity-50 shrink-0 min-h-[44px]"
                >
                  <UserPlus size={18} /> Ongeza Fundi
                </button>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               {staff.map(member => (
-                <div key={member.id} className="bg-white flex items-center p-4 rounded-2xl border border-slate-100 shadow-sm relative group">
-                   <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+                <div key={member.id} className="bg-white flex items-center p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm relative group">
+                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0">
                       <img src={member.photoUrl} alt={member.name} className="w-full h-full object-cover" />
                    </div>
-                   <div className="ml-4 flex-1">
-                      <h4 className="font-bold text-slate-900">{member.name}</h4>
-                      <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">{member.role}</p>
+                   <div className="ml-3 sm:ml-4 flex-1 min-w-0">
+                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm truncate">{member.name}</h4>
+                      <p className="text-[10px] sm:text-xs font-bold text-blue-600 uppercase tracking-widest truncate">{member.role}</p>
                    </div>
                    <button 
                       onClick={() => handleDelete(member.id, 'staff')}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 p-2"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-red-500 p-2.5 hover:bg-red-50 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center active:scale-95"
+                      title="Futa kiongozi"
                    >
                      <Trash2 size={18} />
                    </button>
@@ -394,29 +396,29 @@ export default function TeamDashboard() {
       {/* Modals */}
       <AnimatePresence>
         {(isAddingPlayer || isAddingStaff) && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-2 sm:p-4">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl space-y-6"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-md shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
             >
-              <h3 className="text-2xl font-bold flex items-center gap-2">
-                <UserPlus className="text-blue-600" />
+              <h3 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-slate-900">
+                <UserPlus className="text-blue-600" size={24} />
                 {isAddingPlayer ? "Sajili Mchezaji" : "Sajili Benchi la Ufundi"}
               </h3>
               
               <form onSubmit={isAddingPlayer ? handleAddPlayer : handleAddStaff} className="space-y-4">
                  <div className="space-y-1">
                    <label className="text-xs font-bold text-slate-500 uppercase">Jina Kamili</label>
-                   <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
+                   <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base" />
                  </div>
 
                  {isAddingPlayer ? (
-                   <div className="grid grid-cols-2 gap-4">
+                   <div className="grid grid-cols-2 gap-3">
                      <div className="space-y-1">
                        <label className="text-xs font-bold text-slate-500 uppercase">Nafasi</label>
-                       <select required value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-slate-200">
+                       <select required value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full px-3 py-3 rounded-xl border border-slate-200 text-base bg-white">
                           <option value="">Chagua</option>
                           <option value="GK">Goal Keeper</option>
                           <option value="DEF">Defender</option>
@@ -426,29 +428,29 @@ export default function TeamDashboard() {
                      </div>
                      <div className="space-y-1">
                        <label className="text-xs font-bold text-slate-500 uppercase">Jezi #</label>
-                       <input required type="number" value={formData.jersey} onChange={e => setFormData({...formData, jersey: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-slate-200" />
+                       <input required type="number" value={formData.jersey} onChange={e => setFormData({...formData, jersey: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
                      </div>
                    </div>
                  ) : (
                    <div className="space-y-1">
                      <label className="text-xs font-bold text-slate-500 uppercase">Wadhifa (Role)</label>
-                     <input required type="text" placeholder="Mfano: Head Coach, Assistant, Doctor..." value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-slate-200" />
+                     <input required type="text" placeholder="Mfano: Head Coach, Assistant, Doctor..." value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
                    </div>
                  )}
 
                  <div className="space-y-1">
                    <label className="text-xs font-bold text-slate-500 uppercase">Picha</label>
-                   <div className="relative border-2 border-dashed border-slate-200 rounded-xl p-4 text-center">
-                      <input required type="file" accept="image/*" onChange={e => setFormData({...formData, photo: e.target.files?.[0] || null})} className="absolute inset-0 opacity-0 cursor-pointer" />
-                      <Camera size={24} className="mx-auto text-slate-400 mb-1" />
-                      <span className="text-xs text-slate-500">{formData.photo ? formData.photo.name : "Pandisha Picha"}</span>
+                   <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center bg-slate-50">
+                      <input required type="file" accept="image/*" onChange={e => setFormData({...formData, photo: e.target.files?.[0] || null})} className="absolute inset-0 opacity-0 cursor-pointer min-h-[44px]" />
+                      <Camera size={26} className="mx-auto text-blue-600 mb-1" />
+                      <span className="text-xs font-bold text-slate-700 block truncate">{formData.photo ? formData.photo.name : "Gusa hapa kupakia picha kutoka simuni"}</span>
                    </div>
                  </div>
 
-                 <div className="flex gap-4 pt-4">
-                    <button type="button" onClick={() => {setIsAddingPlayer(false); setIsAddingStaff(false);}} className="flex-1 px-4 py-3 font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">Ghairi</button>
-                    <button type="submit" disabled={isUploading} className="flex-[2] bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50">
-                       {isUploading ? "Inasave..." : "Ilaiki"}
+                 <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => {setIsAddingPlayer(false); setIsAddingStaff(false);}} className="flex-1 px-4 py-3.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors text-sm border border-slate-200 min-h-[48px]">Ghairi</button>
+                    <button type="submit" disabled={isUploading} className="flex-[2] bg-blue-600 text-white px-4 py-3.5 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 text-sm shadow-lg shadow-blue-100 min-h-[48px]">
+                       {isUploading ? "Inatunza..." : "Hifadhi Taarifa"}
                     </button>
                  </div>
               </form>
