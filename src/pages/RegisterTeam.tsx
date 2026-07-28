@@ -7,7 +7,7 @@ import { handleFirestoreError } from '../lib/firestore-errors';
 import { db, storage } from '../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { motion } from 'motion/react';
-import { Upload, Trophy, CreditCard, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Upload, Trophy, CreditCard, ChevronRight, CheckCircle2, Info } from 'lucide-react';
 import { cn, compressImage } from '../lib/utils';
 
 export default function RegisterTeam() {
@@ -220,24 +220,16 @@ export default function RegisterTeam() {
               </div>
             </div>
 
-            <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100">
-              <h3 className="font-bold text-slate-800 text-xs sm:text-sm mb-2">Maelekezo ya Malipo:</h3>
-              <p className="text-xs sm:text-sm text-slate-600 mb-3">
-                Ada ya usajili ni <span className="font-extrabold text-slate-900">TZS 50,000</span>. Tafadhali lipa kupitia:
-              </p>
-              <ul className="space-y-2 text-xs sm:text-sm text-slate-700">
-                <li className="flex justify-between border-b border-slate-200 pb-2">
-                  <span>M-PESA / Vodacom:</span>
-                  <span className="font-mono font-bold text-blue-600">0688 092 015</span>
-                </li>
-                <li className="flex justify-between border-b border-slate-200 pb-2">
-                  <span>Lipa kwa Simu / Tigo:</span>
-                  <span className="font-mono font-bold text-blue-600">512345</span>
-                </li>
-                <li className="flex justify-between">
-                  <span>CRDB Bank:</span>
-                  <span className="font-mono font-bold text-blue-600">015XXXXXXXXXXX</span>
-                </li>
+            <div className="bg-amber-50/80 border border-amber-200 p-4 sm:p-6 rounded-2xl">
+              <h3 className="font-extrabold text-amber-900 text-xs sm:text-sm mb-2.5 flex items-center gap-2">
+                <Info size={18} className="text-amber-700 shrink-0" />
+                Mambo ya Kuzingatia Wakati wa Malipo:
+              </h3>
+              <ul className="space-y-2 text-xs sm:text-sm text-amber-900/90 list-disc list-inside font-medium leading-relaxed">
+                <li>Ada rasmi ya usajili wa timu ni <span className="font-black text-slate-900">TZS 80,000</span>.</li>
+                <li>Chagua njia sahihi ya kibenki au ya mtandao wa simu uliyotumia kufanya malipo.</li>
+                <li>Hakikisha unapakia picha au picha-skrini (screenshot) iliyo wazi ya risiti/muamala kama uthibitisho.</li>
+                <li>Usajili wa timu yako utathibitishwa rasmi na Kamati Kuu ya UMTV CUP 2026 baada ya kukagua risiti yako.</li>
               </ul>
             </div>
 

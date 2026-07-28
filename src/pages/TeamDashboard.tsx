@@ -21,6 +21,8 @@ import {
   Trash2, 
   ShieldAlert, 
   CheckCircle, 
+  CheckCircle2,
+  XCircle,
   Clock, 
   Camera,
   Settings,
@@ -319,9 +321,15 @@ export default function TeamDashboard() {
   };
 
   const handleDelete = async (id: string, type: 'players' | 'staff') => {
-    if (confirm('Je unauhakika unataka kufuta rekodi hii?')) {
+    const label = type === 'players' ? 'mchezaji huyu' : 'kiongozi huyu';
+    if (confirm(`Je, una uhakika unataka kufuta ${label} kabisa?`)) {
       try {
         await deleteDoc(doc(db, type, id));
+        if (type === 'players') {
+          setPlayers(prev => prev.filter(p => p.id !== id));
+        } else {
+          setStaff(prev => prev.filter(s => s.id !== id));
+        }
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `${type}/${id}`);
       }
@@ -346,24 +354,43 @@ export default function TeamDashboard() {
           <h1 className="text-2xl md:text-4xl font-black text-slate-900 mb-2">{team.name}</h1>
           <div className="flex flex-wrap gap-2 justify-center md:justify-start">
             <span className={cn(
-              "px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1",
-              team.paymentStatus === 'CONFIRMED' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+              "px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border shadow-sm",
+              (team.paymentStatus === 'CONFIRMED' || team.isApproved)
+                ? "bg-green-100 text-green-800 border-green-200"
+                : team.paymentStatus === 'REJECTED'
+                ? "bg-red-100 text-red-800 border-red-200"
+                : "bg-amber-100 text-amber-800 border-amber-200"
+            )}>
+              {(team.paymentStatus === 'CONFIRMED' || team.isApproved) ? (
+                <>
+                  <CheckCircle2 size={14} className="text-green-700" />
+                  <span>Status: APPROVED (IMETHIBITISHWA)</span>
+                </>
+              ) : team.paymentStatus === 'REJECTED' ? (
+                <>
+                  <XCircle size={14} className="text-red-700" />
+                  <span>Status: REJECTED (IMEKATALIWA)</span>
+                </>
+              ) : (
+                <>
+                  <Clock size={14} className="text-amber-700" />
+                  <span>Status: PENDING (INASUBIRI MAPITIO)</span>
+                </>
+              )}
+            </span>
+            <span className={cn(
+              "px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1 border",
+              team.paymentStatus === 'CONFIRMED' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-200"
             )}>
               {team.paymentStatus === 'CONFIRMED' ? <CheckCircle size={12} /> : <Clock size={12} />}
-              {team.paymentStatus === 'CONFIRMED' ? 'Malipo Sawa' : 'Malipo Bado'}
+              {team.paymentStatus === 'CONFIRMED' ? 'Malipo: Imethibitishwa' : 'Malipo: Inasubiri'}
             </span>
             <span className={cn(
-              "px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1",
-              team.isApproved ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"
-            )}>
-              {team.isApproved ? 'Umekubaliwa' : 'Inakaguliwa'}
-            </span>
-            <span className={cn(
-              "px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1",
-              team.formSubmitted ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+              "px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1 border",
+              team.formSubmitted ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-slate-100 text-slate-600 border-slate-200"
             )}>
               {team.formSubmitted ? <CheckCircle size={12} /> : <Clock size={12} />}
-              {team.formSubmitted ? 'Fomu Imewasilishwa' : 'Fomu Bado'}
+              {team.formSubmitted ? 'Fomu: Imewasilishwa' : 'Fomu: Bado'}
             </span>
             <button
               onClick={handlePrintRegistrationForm}
@@ -414,6 +441,60 @@ export default function TeamDashboard() {
         {activeTab === 'overview' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
             <h3 className="text-xl font-bold text-slate-900">Hali ya Usajili Wa Timu</h3>
+
+            {/* Status Banner */}
+            {(team.paymentStatus === 'CONFIRMED' || team.isApproved) ? (
+              <div className="bg-emerald-600 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/20 p-3 rounded-2xl shrink-0">
+                    <CheckCircle2 size={32} className="text-white" />
+                  </div>
+                  <div>
+                    <div className="inline-block px-2.5 py-0.5 bg-emerald-400/40 text-white font-black text-[10px] tracking-widest uppercase rounded-full mb-1">
+                      STATUS YA USAJILI: APPROVED / IMETHIBITISHWA
+                    </div>
+                    <h4 className="font-black text-lg">Usajili Umethibitishwa na Kukubaliwa!</h4>
+                    <p className="text-emerald-100 text-xs mt-0.5 leading-relaxed">
+                      Timu ya <strong>{team.name}</strong> imekamilisha taratibu zote na imethibitishwa rasmi na Kamati Kuu kushiriki UMTV CUP 2026.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : team.paymentStatus === 'REJECTED' ? (
+              <div className="bg-rose-600 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/20 p-3 rounded-2xl shrink-0">
+                    <XCircle size={32} className="text-white" />
+                  </div>
+                  <div>
+                    <div className="inline-block px-2.5 py-0.5 bg-rose-400/40 text-white font-black text-[10px] tracking-widest uppercase rounded-full mb-1">
+                      STATUS YA USAJILI: REJECTED / IMEKATALIWA
+                    </div>
+                    <h4 className="font-black text-lg">Maombi ya Usajili Yamekataliwa</h4>
+                    <p className="text-rose-100 text-xs mt-0.5 leading-relaxed">
+                      Maombi ya usajili wa timu yako yanahitaji marekebisho. Tafadhali wasiliana na Uongozi wa UMTV CUP.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-amber-500 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/20 p-3 rounded-2xl shrink-0">
+                    <Clock size={32} className="text-white" />
+                  </div>
+                  <div>
+                    <div className="inline-block px-2.5 py-0.5 bg-amber-400/40 text-white font-black text-[10px] tracking-widest uppercase rounded-full mb-1">
+                      STATUS YA USAJILI: PENDING / INASUBIRI MAPITIO
+                    </div>
+                    <h4 className="font-black text-lg">Usajili Upo Kwenye Mapitio (Pending)</h4>
+                    <p className="text-amber-100 text-xs mt-0.5 leading-relaxed">
+                      Maombi ya usajili wa timu yako yamepokelewa na yapo kwenye hatua ya kukaguliwa na Kamati Kuu. Subiri uthibitisho ukamilike.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Form Submission Action Card */}
             {team.formSubmitted ? (
@@ -535,10 +616,10 @@ export default function TeamDashboard() {
                     <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
                     <button 
                       onClick={() => handleDelete(player.id, 'players')}
-                      className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white p-2 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md active:scale-95"
-                      title="Futa mchezaji"
+                      className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-xl transition-all min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md active:scale-95"
+                      title="Futa Mchezaji"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={15} />
                     </button>
                   </div>
                   <div className="p-3 sm:p-4 text-center">
@@ -583,8 +664,8 @@ export default function TeamDashboard() {
                    </div>
                    <button 
                       onClick={() => handleDelete(member.id, 'staff')}
-                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-red-500 p-2.5 hover:bg-red-50 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center active:scale-95"
-                      title="Futa kiongozi"
+                      className="text-red-600 bg-red-50 hover:bg-red-600 hover:text-white p-2.5 rounded-xl transition-all min-w-[40px] min-h-[40px] flex items-center justify-center active:scale-95 border border-red-100"
+                      title="Futa Kiongozi"
                    >
                      <Trash2 size={18} />
                    </button>

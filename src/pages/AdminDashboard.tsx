@@ -7,6 +7,7 @@ import {
   updateDoc, 
   doc, 
   addDoc, 
+  deleteDoc,
   orderBy,
   getDocs,
   where
@@ -32,7 +33,8 @@ import {
   Users,
   FileText,
   Download,
-  Printer
+  Printer,
+  Trash2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -253,6 +255,84 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteTeam = async (teamId: string, teamName: string) => {
+    if (!confirm(`Je, una uhakika unataka kufuta timu ya "${teamName}" kabisa? Kitendo hiki kitaondoa timu, wachezaji, viongozi na mechi zote za timu hii.`)) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'teams', teamId));
+
+      const qPlayers = query(collection(db, 'players'), where('teamId', '==', teamId));
+      const qStaff = query(collection(db, 'staff'), where('teamId', '==', teamId));
+      const qHomeMatches = query(collection(db, 'matches'), where('homeTeamId', '==', teamId));
+      const qAwayMatches = query(collection(db, 'matches'), where('awayTeamId', '==', teamId));
+
+      const [playersSnap, staffSnap, homeMatchesSnap, awayMatchesSnap] = await Promise.all([
+        getDocs(qPlayers),
+        getDocs(qStaff),
+        getDocs(qHomeMatches),
+        getDocs(qAwayMatches)
+      ]);
+
+      const deletes = [
+        ...playersSnap.docs.map(d => deleteDoc(doc(db, 'players', d.id))),
+        ...staffSnap.docs.map(d => deleteDoc(doc(db, 'staff', d.id))),
+        ...homeMatchesSnap.docs.map(d => deleteDoc(doc(db, 'matches', d.id))),
+        ...awayMatchesSnap.docs.map(d => deleteDoc(doc(db, 'matches', d.id)))
+      ];
+
+      await Promise.all(deletes);
+
+      setTeams(prev => prev.filter(t => t.id !== teamId));
+      if (selectedTeam?.id === teamId) {
+        setSelectedTeam(null);
+      }
+      alert(`Timu ya "${teamName}" na taarifa zake zote zimefutwa kikamilifu.`);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `teams/${teamId}`);
+    }
+  };
+
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!confirm('Je, una uhakika unataka kufuta mechi hii kwenye ratiba?')) return;
+    try {
+      await deleteDoc(doc(db, 'matches', matchId));
+      setMatches(prev => prev.filter(m => m.id !== matchId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `matches/${matchId}`);
+    }
+  };
+
+  const handleDeletePeriod = async (periodId: string) => {
+    if (!confirm('Je, una uhakika unataka kufuta dirisha hili la usajili?')) return;
+    try {
+      await deleteDoc(doc(db, 'registrationPeriods', periodId));
+      setPeriods(prev => prev.filter(p => p.id !== periodId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `registrationPeriods/${periodId}`);
+    }
+  };
+
+  const handleDeletePlayer = async (playerId: string) => {
+    if (!confirm('Je, una uhakika unataka kufuta mchezaji huyu kabisa?')) return;
+    try {
+      await deleteDoc(doc(db, 'players', playerId));
+      setSelectedTeamPlayers(prev => prev.filter(p => p.id !== playerId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `players/${playerId}`);
+    }
+  };
+
+  const handleDeleteStaff = async (staffId: string) => {
+    if (!confirm('Je, una uhakika unataka kufuta kiongozi huyu kabisa?')) return;
+    try {
+      await deleteDoc(doc(db, 'staff', staffId));
+      setSelectedTeamStaff(prev => prev.filter(s => s.id !== staffId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `staff/${staffId}`);
+    }
+  };
+
   const handleAddPeriod = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -437,6 +517,15 @@ export default function AdminDashboard() {
                           Rudisha Mapitio
                         </button>
                       )}
+
+                      <button
+                        onClick={() => handleDeleteTeam(team.id, team.name)}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 px-3 py-2 rounded-xl text-sm font-bold transition-all border border-red-100"
+                        title="Futa Timu"
+                      >
+                        <Trash2 size={15} />
+                        <span>Futa</span>
+                      </button>
                    </div>
                 </div>
               ))}
@@ -472,16 +561,25 @@ export default function AdminDashboard() {
             <div className="md:col-span-2 space-y-4">
                <h3 className="text-xl font-bold">Madirisha Yaliyopita</h3>
                {periods.map(p => (
-                 <div key={p.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center">
+                 <div key={p.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center gap-4">
                     <div>
                       <h4 className="font-bold">{p.seasonName}</h4>
                       <p className="text-xs text-slate-500">{new Date(p.startDate).toLocaleDateString()} - {new Date(p.endDate).toLocaleDateString()}</p>
                     </div>
-                    <div className={cn(
-                      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                      p.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
-                    )}>
-                      {p.isActive ? 'INAFANYA KAZI' : 'IMEISHA'}
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                        p.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                      )}>
+                        {p.isActive ? 'INAFANYA KAZI' : 'IMEISHA'}
+                      </div>
+                      <button
+                        onClick={() => handleDeletePeriod(p.id)}
+                        className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
+                        title="Futa Dirisha"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                  </div>
                ))}
@@ -554,7 +652,16 @@ export default function AdminDashboard() {
                           <option value="LIVE">LIVE</option>
                           <option value="FINISHED">IMEISHA</option>
                        </select>
-                       <span className="text-xs text-slate-400 font-medium">{new Date(m.matchDate).toLocaleString()} - {m.venue}</span>
+                       <div className="flex items-center gap-3">
+                         <span className="text-xs text-slate-400 font-medium">{new Date(m.matchDate).toLocaleString()} - {m.venue}</span>
+                         <button
+                           onClick={() => handleDeleteMatch(m.id)}
+                           className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                           title="Futa Mechi"
+                         >
+                           <Trash2 size={16} />
+                         </button>
+                       </div>
                     </div>
                  </div>
                ))}
@@ -585,12 +692,13 @@ export default function AdminDashboard() {
                       <th className="py-3 px-4 text-center">GF</th>
                       <th className="py-3 px-4 text-center">GA</th>
                       <th className="py-3 px-4 text-center">Alama (PTS)</th>
+                      <th className="py-3 px-4 text-center">Kitendo</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {teams.filter(t => t.isApproved).length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="py-8 text-center text-slate-400 font-medium">
+                        <td colSpan={10} className="py-8 text-center text-slate-400 font-medium">
                           Hakuna timu zilizothibitishwa bado. Thibitisha timu kwenye tab ya "Uthibitisho".
                         </td>
                       </tr>
@@ -691,6 +799,15 @@ export default function AdminDashboard() {
                               onBlur={e => updateTeamStandings(team.id, { points: parseInt(e.target.value) || 0 })}
                               className="w-12 text-center bg-blue-50 border border-blue-100 text-blue-700 rounded-lg p-1 font-extrabold focus:outline-none focus:bg-white focus:border-blue-500"
                             />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => handleDeleteTeam(team.id, team.name)}
+                              className="p-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all border border-red-100 inline-flex items-center justify-center"
+                              title="Futa Timu"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </td>
                         </tr>
                       ))
@@ -987,7 +1104,6 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   )}
-
                   {detailModalTab === 'players' && (
                     <div className="space-y-6">
                       <div className="flex justify-between items-center border-b pb-4">
@@ -1009,6 +1125,13 @@ export default function AdminDashboard() {
                               <div className="absolute top-2 right-2 bg-slate-900 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-md">
                                 #{player.jerseyNumber}
                               </div>
+                              <button
+                                onClick={() => handleDeletePlayer(player.id)}
+                                className="absolute top-2 left-2 p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                                title="Futa Mchezaji"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                               <div className="w-20 h-20 rounded-full overflow-hidden bg-slate-50 border-2 border-slate-100 mb-3 shrink-0 shadow-inner">
                                 {player.photoUrl ? (
                                   <img 
@@ -1054,7 +1177,14 @@ export default function AdminDashboard() {
                       ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                           {selectedTeamStaff.map(member => (
-                            <div key={member.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col items-center text-center group hover:shadow-md transition-all">
+                            <div key={member.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col items-center text-center group hover:shadow-md transition-all relative">
+                              <button
+                                onClick={() => handleDeleteStaff(member.id)}
+                                className="absolute top-2 left-2 p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                                title="Futa Kiongozi"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                               <div className="w-20 h-20 rounded-full overflow-hidden bg-slate-50 border-2 border-slate-100 mb-3 shrink-0 shadow-inner">
                                 {member.photoUrl ? (
                                   <img 
@@ -1084,35 +1214,45 @@ export default function AdminDashboard() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-              <button 
-                onClick={() => setSelectedTeam(null)}
-                className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm"
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+              <button
+                onClick={() => handleDeleteTeam(selectedTeam.id, selectedTeam.name)}
+                className="flex items-center gap-2 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 px-4 py-2.5 rounded-xl font-bold text-sm transition-all border border-red-100"
               >
-                Funga
+                <Trash2 size={16} />
+                <span>Futa Timu Hii Kabisa</span>
               </button>
-              {selectedTeam.paymentStatus === 'PENDING' && (
-                <>
-                  <button 
-                    onClick={() => {
-                      handleApprove(selectedTeam.id, 'REJECTED');
-                      setSelectedTeam(null);
-                    }} 
-                    className="bg-red-50 text-red-600 hover:bg-red-100 px-6 py-2.5 rounded-xl font-bold text-sm transition-colors"
-                  >
-                    Kataa Usajili
-                  </button>
-                  <button 
-                    onClick={() => {
-                      handleApprove(selectedTeam.id, 'CONFIRMED');
-                      setSelectedTeam(null);
-                    }} 
-                    className="bg-green-600 text-white hover:bg-green-700 px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-green-100 transition-all"
-                  >
-                    Thibitisha Timu
-                  </button>
-                </>
-              )}
+
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setSelectedTeam(null)}
+                  className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm"
+                >
+                  Funga
+                </button>
+                {selectedTeam.paymentStatus === 'PENDING' && (
+                  <>
+                    <button 
+                      onClick={() => {
+                        handleApprove(selectedTeam.id, 'REJECTED');
+                        setSelectedTeam(null);
+                      }} 
+                      className="bg-red-50 text-red-600 hover:bg-red-100 px-6 py-2.5 rounded-xl font-bold text-sm transition-colors"
+                    >
+                      Kataa Usajili
+                    </button>
+                    <button 
+                      onClick={() => {
+                        handleApprove(selectedTeam.id, 'CONFIRMED');
+                        setSelectedTeam(null);
+                      }} 
+                      className="bg-green-600 text-white hover:bg-green-700 px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-green-100 transition-all"
+                    >
+                      Thibitisha Timu
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </motion.div>
         </div>

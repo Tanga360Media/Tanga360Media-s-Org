@@ -96,7 +96,7 @@ export default function Home() {
     },
     {
       q: "Je, ninawezaje kufanya malipo ya ada ya usajili?",
-      a: "Tunakubali malipo kupitia mitandao yote ya simu (M-Pesa, Tigo Pesa, Airtel Money). Lipa ada rasmi ya mashindano (Tsh 50,000) kwenda namba yetu ya huduma iliyoainishwa kwenye fomu ya usajili na upakie picha (screenshot) au ujumbe wa muamala kama uthibitisho wa malipo."
+      a: "Tunakubali malipo kupitia mitandao yote ya simu (M-Pesa, Tigo Pesa, Airtel Money). Lipa ada rasmi ya mashindano (Tsh 80,000) kwenda namba yetu ya huduma iliyoainishwa kwenye fomu ya usajili na upakie picha (screenshot) au ujumbe wa muamala kama uthibitisho wa malipo."
     },
     {
       q: "Namba yangu ya simu itakuwa salama?",
@@ -174,7 +174,7 @@ export default function Home() {
 
                 <h3 className="text-xl font-bold text-white mb-2">{activePeriod.seasonName}</h3>
                 <p className="text-slate-400 text-sm mb-6">
-                  Ada ya usajili wa kila timu ni <span className="text-white font-bold">Tsh 50,000</span> tu. Hakikisha unasajili timu yako mapema kabla ya dirisha kufungwa.
+                  Ada ya usajili wa kila timu ni <span className="text-white font-bold">Tsh 80,000</span> tu. Hakikisha unasajili timu yako mapema kabla ya dirisha kufungwa.
                 </p>
 
                 <div className="space-y-3 bg-slate-800/40 p-4 rounded-2xl border border-slate-700/30 mb-6 font-mono text-xs">
@@ -302,23 +302,8 @@ export default function Home() {
           <div className="lg:col-span-7 space-y-4">
             <h2 className="text-2xl md:text-3xl font-black">Mwongozo wa Malipo ya Usajili</h2>
             <p className="text-white/85 text-sm md:text-base leading-relaxed">
-              Ada rasmi ya kila timu shiriki kwa msimu mzima ni <span className="underline font-bold">Tsh 50,000 / -</span>. Tafadhali lipa ada hii kwa njia ya simu, na kisha uhakikishe unachukua picha ya ujumbe wa muamala au risiti ya malipo kabla ya kuandika fomu.
+              Ada rasmi ya kila timu shiriki kwa msimu mzima ni <span className="underline font-bold">Tsh 80,000 / -</span>. Tafadhali lipa ada hii kupitia mtandao wa simu au benki, na kisha uhakikishe unachukua picha ya ujumbe wa muamala au risiti ya malipo kabla ya kuwasilisha fomu.
             </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-              <div className="bg-white/10 p-4 rounded-xl border border-white/10">
-                <div className="text-xs font-bold uppercase text-blue-200 block mb-1">M-Pesa (Lipa)</div>
-                <div className="font-mono text-sm font-bold">Lipa Namba: 5678129</div>
-              </div>
-              <div className="bg-white/10 p-4 rounded-xl border border-white/10">
-                <div className="text-xs font-bold uppercase text-blue-200 block mb-1">Tigo Pesa</div>
-                <div className="font-mono text-sm font-bold">Tuma: 0712 345 678</div>
-              </div>
-              <div className="bg-white/10 p-4 rounded-xl border border-white/10">
-                <div className="text-xs font-bold uppercase text-blue-200 block mb-1">Airtel Money</div>
-                <div className="font-mono text-sm font-bold">Lipa Namba: 991204</div>
-              </div>
-            </div>
           </div>
           
           <div className="lg:col-span-5 bg-white/5 p-6 rounded-2xl border border-white/10">
