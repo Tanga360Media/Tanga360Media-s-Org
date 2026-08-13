@@ -34,7 +34,9 @@ import {
   FileText,
   Download,
   Printer,
-  Trash2
+  Trash2,
+  Edit3,
+  CalendarPlus
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -50,6 +52,13 @@ export default function AdminDashboard() {
   const [seasonName, setSeasonName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Period Extension / Edit State
+  const [editingPeriod, setEditingPeriod] = useState<RegistrationPeriod | null>(null);
+  const [editSeasonName, setEditSeasonName] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
+  const [editIsActive, setEditIsActive] = useState(true);
   
   // Match Form
   const [matchDate, setMatchDate] = useState('');
@@ -350,6 +359,53 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleOpenExtendModal = (period: RegistrationPeriod) => {
+    setEditingPeriod(period);
+    setEditSeasonName(period.seasonName || '');
+    setEditStartDate(period.startDate || '');
+    setEditEndDate(period.endDate || '');
+    setEditIsActive(period.isActive ?? true);
+  };
+
+  const handleQuickExtend = (days: number) => {
+    let baseDate = editEndDate ? new Date(editEndDate) : new Date();
+    if (isNaN(baseDate.getTime())) {
+      baseDate = new Date();
+    }
+    const targetDate = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+    const offset = targetDate.getTimezoneOffset() * 60000;
+    const localIso = new Date(targetDate.getTime() - offset).toISOString().slice(0, 16);
+    setEditEndDate(localIso);
+    setEditIsActive(true);
+  };
+
+  const handleUpdatePeriod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPeriod) return;
+    try {
+      await updateDoc(doc(db, 'registrationPeriods', editingPeriod.id), {
+        seasonName: editSeasonName,
+        startDate: editStartDate,
+        endDate: editEndDate,
+        isActive: editIsActive
+      });
+      setEditingPeriod(null);
+      alert('Muda wa dirisha la usajili umesasishwa na kuongezwa kikamilifu!');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `registrationPeriods/${editingPeriod.id}`);
+    }
+  };
+
+  const handleTogglePeriodActive = async (period: RegistrationPeriod) => {
+    try {
+      await updateDoc(doc(db, 'registrationPeriods', period.id), {
+        isActive: !period.isActive
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `registrationPeriods/${period.id}`);
+    }
+  };
+
   const handleAddMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!homeTeam.id || !awayTeam.id) return;
@@ -559,30 +615,68 @@ export default function AdminDashboard() {
                </form>
             </div>
             <div className="md:col-span-2 space-y-4">
-               <h3 className="text-xl font-bold">Madirisha Yaliyopita</h3>
-               {periods.map(p => (
-                 <div key={p.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center gap-4">
-                    <div>
-                      <h4 className="font-bold">{p.seasonName}</h4>
-                      <p className="text-xs text-slate-500">{new Date(p.startDate).toLocaleDateString()} - {new Date(p.endDate).toLocaleDateString()}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                        p.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
-                      )}>
-                        {p.isActive ? 'INAFANYA KAZI' : 'IMEISHA'}
-                      </div>
-                      <button
-                        onClick={() => handleDeletePeriod(p.id)}
-                        className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                        title="Futa Dirisha"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+               <h3 className="text-xl font-bold flex items-center justify-between">
+                 <span>Madirisha ya Usajili</span>
+                 <span className="text-xs font-normal text-slate-500">Orodha na Udhibiti wa Muda</span>
+               </h3>
+
+               {periods.length === 0 ? (
+                 <div className="p-8 bg-white rounded-2xl border border-slate-100 text-center text-slate-400 font-medium">
+                   Hakuna madirisha ya usajili yaliyoundwa bado.
                  </div>
-               ))}
+               ) : (
+                 periods.map(p => (
+                   <div key={p.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-extrabold text-slate-900 text-base">{p.seasonName}</h4>
+                          <span className={cn(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                            p.isActive ? "bg-green-100 text-green-700 border border-green-200" : "bg-slate-100 text-slate-500 border border-slate-200"
+                          )}>
+                            {p.isActive ? 'INAFANYA KAZI (WAZI)' : 'IMEISHA / IMEFUNGIWA'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 font-medium flex items-center gap-2">
+                          <Clock size={14} className="text-blue-500 shrink-0" />
+                          <span>{p.startDate ? new Date(p.startDate).toLocaleString('sw-TZ') : 'N/A'} — <strong className="text-blue-600">{p.endDate ? new Date(p.endDate).toLocaleString('sw-TZ') : 'N/A'}</strong></span>
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => handleOpenExtendModal(p)}
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white transition-all border border-blue-200 flex items-center gap-1.5 shadow-sm active:scale-95"
+                          title="Ongeza Muda au Hariri Tarehe za Usajili"
+                        >
+                          <CalendarPlus size={15} />
+                          <span>Ongeza Muda / Hariri</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleTogglePeriodActive(p)}
+                          className={cn(
+                            "px-3 py-2 rounded-xl text-xs font-bold transition-all border active:scale-95",
+                            p.isActive
+                              ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                          )}
+                          title={p.isActive ? "Funga Dirisha" : "Fungua/Washa Dirisha"}
+                        >
+                          {p.isActive ? "Funga Dirisha" : "Washa Dirisha"}
+                        </button>
+
+                        <button
+                          onClick={() => handleDeletePeriod(p.id)}
+                          className="p-2 rounded-xl text-red-500 bg-red-50 hover:bg-red-600 hover:text-white transition-colors border border-red-100"
+                          title="Futa Dirisha"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                   </div>
+                 ))
+               )}
             </div>
           </motion.div>
         )}
@@ -1254,6 +1348,125 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal ya Kurefusha / Kuongeza Muda wa Usajili */}
+      {editingPeriod && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white max-w-lg w-full rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-2 text-blue-600">
+                <CalendarPlus size={22} />
+                <h3 className="font-extrabold text-slate-900 text-lg">Ongeza Muda wa Usajili</h3>
+              </div>
+              <button onClick={() => setEditingPeriod(null)} className="p-2 rounded-full hover:bg-slate-200/60 text-slate-500">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePeriod} className="p-6 space-y-5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Jina la Msimu / Dirisha</label>
+                <input
+                  required
+                  type="text"
+                  value={editSeasonName}
+                  onChange={e => setEditSeasonName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 font-medium focus:border-blue-500 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Tarehe ya Kuanza</label>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={editStartDate}
+                    onChange={e => setEditStartDate(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-blue-700 uppercase flex items-center gap-1">
+                    <span>Tarehe Mpya ya Mwisho</span>
+                  </label>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={editEndDate}
+                    onChange={e => setEditEndDate(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-blue-500 bg-blue-50/30 font-bold text-blue-900 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Quick extension shortcuts */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                <span className="text-xs font-black uppercase text-slate-600 block">Vifungo vya Haraka vya Kuongeza Muda:</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickExtend(3)}
+                    className="px-3 py-2 bg-white hover:bg-blue-600 hover:text-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all shadow-sm active:scale-95"
+                  >
+                    + Siku 3
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickExtend(7)}
+                    className="px-3 py-2 bg-white hover:bg-blue-600 hover:text-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all shadow-sm active:scale-95"
+                  >
+                    + Wiki 1 (7)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickExtend(14)}
+                    className="px-3 py-2 bg-white hover:bg-blue-600 hover:text-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all shadow-sm active:scale-95"
+                  >
+                    + Wiki 2 (14)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickExtend(30)}
+                    className="px-3 py-2 bg-white hover:bg-blue-600 hover:text-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all shadow-sm active:scale-95"
+                  >
+                    + Mwezi 1 (30)
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  id="editIsActive"
+                  checked={editIsActive}
+                  onChange={e => setEditIsActive(e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="editIsActive" className="text-sm font-bold text-slate-800 cursor-pointer">
+                  Washa Dirisha hili la Usajili (Inafanya kazi)
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingPeriod(null)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm"
+                >
+                  Ghaili
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow-md active:scale-95 transition-all"
+                >
+                  Hifadhi & Ongeza Muda
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}
