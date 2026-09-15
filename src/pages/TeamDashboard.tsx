@@ -19,6 +19,7 @@ import {
   Users, 
   UserPlus, 
   Trash2, 
+  Pencil,
   ShieldAlert, 
   CheckCircle, 
   CheckCircle2,
@@ -30,7 +31,10 @@ import {
   Trophy,
   Send,
   Printer,
-  FileText
+  FileText,
+  X,
+  RefreshCw,
+  UserCheck
 } from 'lucide-react';
 import { cn, compressImage } from '../lib/utils';
 
@@ -42,12 +46,36 @@ export default function TeamDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'staff'>('overview');
   const [loading, setLoading] = useState(true);
 
-  // Form states
+  // Form states (Add)
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
   const [isAddingStaff, setIsAddingStaff] = useState(false);
-  const [formData, setFormData] = useState({ name: '', role: '', photo: null as File | null });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    role: '', 
+    position: '',
+    jerseyNumber: '',
+    photo: null as File | null 
+  });
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+
+  // Edit states for Player & Staff
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [editPlayerData, setEditPlayerData] = useState({
+    name: '',
+    position: '',
+    jerseyNumber: '',
+    photo: null as File | null,
+    previewUrl: ''
+  });
+  const [editStaffData, setEditStaffData] = useState({
+    name: '',
+    role: '',
+    photo: null as File | null,
+    previewUrl: ''
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -135,18 +163,69 @@ export default function TeamDashboard() {
     setIsUploading(true);
     try {
       const url = await uploadPhoto(formData.photo, 'players');
-      await addDoc(collection(db, 'players'), {
+      const playerData: any = {
         teamId: team.id,
-        name: formData.name,
+        name: formData.name.trim(),
         photoUrl: url,
         createdAt: new Date().toISOString()
-      });
+      };
+      if (formData.position) playerData.position = formData.position.trim();
+      if (formData.jerseyNumber) playerData.jerseyNumber = Number(formData.jerseyNumber);
+
+      await addDoc(collection(db, 'players'), playerData);
       setIsAddingPlayer(false);
-      setFormData({ name: '', role: '', photo: null });
+      setFormData({ name: '', role: '', position: '', jerseyNumber: '', photo: null });
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'players');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleOpenEditPlayer = (player: Player) => {
+    setEditingPlayer(player);
+    setEditPlayerData({
+      name: player.name,
+      position: player.position || '',
+      jerseyNumber: player.jerseyNumber ? String(player.jerseyNumber) : '',
+      photo: null,
+      previewUrl: player.photoUrl || ''
+    });
+  };
+
+  const handleUpdatePlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlayer || !team) return;
+    setIsUpdating(true);
+    try {
+      let finalPhotoUrl = editingPlayer.photoUrl;
+      if (editPlayerData.photo) {
+        finalPhotoUrl = await uploadPhoto(editPlayerData.photo, 'players');
+      }
+
+      const updatePayload: any = {
+        name: editPlayerData.name.trim(),
+        photoUrl: finalPhotoUrl,
+      };
+
+      if (editPlayerData.position) {
+        updatePayload.position = editPlayerData.position.trim();
+      } else {
+        updatePayload.position = '';
+      }
+
+      if (editPlayerData.jerseyNumber) {
+        updatePayload.jerseyNumber = Number(editPlayerData.jerseyNumber);
+      }
+
+      await updateDoc(doc(db, 'players', editingPlayer.id), updatePayload);
+      
+      setPlayers(prev => prev.map(p => p.id === editingPlayer.id ? { ...p, ...updatePayload } : p));
+      setEditingPlayer(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `players/${editingPlayer.id}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -158,16 +237,53 @@ export default function TeamDashboard() {
       const url = await uploadPhoto(formData.photo, 'staff');
       await addDoc(collection(db, 'staff'), {
         teamId: team.id,
-        name: formData.name,
-        role: formData.role,
+        name: formData.name.trim(),
+        role: formData.role.trim(),
         photoUrl: url
       });
       setIsAddingStaff(false);
-      setFormData({ name: '', role: '', photo: null });
+      setFormData({ name: '', role: '', position: '', jerseyNumber: '', photo: null });
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'staff');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleOpenEditStaff = (member: Staff) => {
+    setEditingStaff(member);
+    setEditStaffData({
+      name: member.name,
+      role: member.role,
+      photo: null,
+      previewUrl: member.photoUrl || ''
+    });
+  };
+
+  const handleUpdateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaff || !team) return;
+    setIsUpdating(true);
+    try {
+      let finalPhotoUrl = editingStaff.photoUrl;
+      if (editStaffData.photo) {
+        finalPhotoUrl = await uploadPhoto(editStaffData.photo, 'staff');
+      }
+
+      const updatePayload: any = {
+        name: editStaffData.name.trim(),
+        role: editStaffData.role.trim(),
+        photoUrl: finalPhotoUrl,
+      };
+
+      await updateDoc(doc(db, 'staff', editingStaff.id), updatePayload);
+      
+      setStaff(prev => prev.map(s => s.id === editingStaff.id ? { ...s, ...updatePayload } : s));
+      setEditingStaff(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `staff/${editingStaff.id}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -210,6 +326,7 @@ export default function TeamDashboard() {
           ${p.photoUrl ? `<img src="${p.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<div style="padding-top: 20px; color: #94a3b8; font-size: 9px; font-weight: bold;">BILA PICHA</div>`}
         </div>
         <div style="font-weight: 800; font-size: 11px; color: #0f172a;">${p.name}</div>
+        ${p.jerseyNumber || p.position ? `<div style="font-size: 9px; color: #2563eb; font-weight: 800; margin-top: 2px;">${p.jerseyNumber ? '#' + p.jerseyNumber : ''} ${p.position || ''}</div>` : ''}
       </div>
     `).join('') : '<p style="grid-column: span 4; font-size: 12px; color: #64748b; font-style: italic; padding: 10px; text-align: center;">Hakuna wachezaji waliosajiliwa kwenye fomu hii.</p>';
 
@@ -322,7 +439,7 @@ export default function TeamDashboard() {
 
   const handleDelete = async (id: string, type: 'players' | 'staff') => {
     const label = type === 'players' ? 'mchezaji huyu' : 'kiongozi huyu';
-    if (confirm(`Je, una uhakika unataka kufuta ${label} kabisa?`)) {
+    if (confirm(`Je, una uhakika unataka kufuta ${label} kabisa? Hatua hii haiwezi kurudishwa.`)) {
       try {
         await deleteDoc(doc(db, type, id));
         if (type === 'players') {
@@ -419,8 +536,8 @@ export default function TeamDashboard() {
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0">
         {[
           { id: 'overview', label: 'Maelezo', icon: Info },
-          { id: 'players', label: 'Wachezaji', icon: Users },
-          { id: 'staff', label: 'Benchi', icon: Settings }
+          { id: 'players', label: `Wachezaji (${players.length}/25)`, icon: Users },
+          { id: 'staff', label: `Benchi la Ufundi (${staff.length}/5)`, icon: Settings }
         ].map(tab => (
           <button
             key={tab.id}
@@ -506,7 +623,7 @@ export default function TeamDashboard() {
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-sm">Fomu ya Usajili Imewasilishwa</h4>
                     <p className="text-slate-500 text-xs mt-0.5">
-                      Fomu rasmi ya timu yako imewasilishwa kwa Kamati Kuu UMTV CUP 2026.
+                      Fomu rasmi ya timu yako imewasilishwa kwa Kamati Kuu UMTV CUP 2026. Unaweza kubadili au kufuta wachezaji/viongozi wakati wowote kabla ya kufungwa kwa dirisha.
                     </p>
                   </div>
                 </div>
@@ -545,9 +662,9 @@ export default function TeamDashboard() {
             <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl flex gap-4 items-start shadow-sm">
               <CheckCircle className="text-emerald-600 shrink-0 mt-0.5" size={20} />
               <div>
-                <h4 className="font-extrabold text-emerald-800 text-sm">Idadi ya Usajili ni Hiyari (Upeo wa Juu)</h4>
+                <h4 className="font-extrabold text-emerald-800 text-sm">Udhibiti wa Wachezaji &amp; Viongozi</h4>
                 <p className="text-emerald-700 text-xs mt-1.5 leading-relaxed">
-                  Timu yako inaweza kukamilisha usajili na idadi yoyote ya wachezaji (hadi 25) na benchi la ufundi (hadi 5). <strong>Sio lazima kabisa</strong> kuwa na wachezaji 25 au viongozi 5 ili usajili ukubaliwe. Unaweza kuwa na wachezaji wachache na bado ukathibitishwa na kuingizwa kwenye ratiba!
+                  Viongozi wa timu wana uwezo kamili wa <strong>Kubadilisha (Hariri jina, picha, jezi, nafasi)</strong> au <strong>Kufuta</strong> mchezaji yeyote wakati wowote kupitia tab ya <em>Wachezaji</em> na <em>Benchi la Ufundi</em> hapo juu.
                 </p>
               </div>
             </div>
@@ -558,7 +675,7 @@ export default function TeamDashboard() {
                 <div>
                   <h4 className="font-bold text-orange-800">Malipo Bado Hayajathibitishwa</h4>
                   <p className="text-orange-700 text-sm mt-1">
-                    Tafadhali subiri admin athibitishe malipo yako. Huwezi kuongeza wachezaji mpaka usajili utakapopitishwa rasmi, au endelea kuongeza rasimu.
+                    Tafadhali subiri admin athibitishe malipo yako. Unaweza kuendelea kuongeza, kubadilisha au kufuta wachezaji na viongozi kwenye orodha yako.
                   </p>
                 </div>
               </div>
@@ -592,88 +709,166 @@ export default function TeamDashboard() {
           </motion.div>
         )}
 
+        {/* Players Tab */}
         {activeTab === 'players' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <div className="flex justify-between items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                <div>
-                  <h3 className="text-xl md:text-2xl font-black text-slate-900">Orodha ya Wachezaji</h3>
-                  <p className="text-slate-500 text-[11px] md:text-xs">Upeo ni wachezaji 25. Sio lazima kufikisha wachezaji 25 kamili ili kukamilisha usajili.</p>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
+                    <Users className="text-blue-600" size={24} />
+                    <span>Orodha ya Wachezaji ({players.length}/25)</span>
+                  </h3>
+                  <p className="text-slate-500 text-xs mt-1">Unaweza kubadilisha taarifa (jina, picha, nafasi, jezi) au kufuta mchezaji yeyote.</p>
                </div>
                <button 
                  onClick={() => setIsAddingPlayer(true)}
                  disabled={players.length >= 25}
-                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-blue-100 disabled:opacity-50"
+                 className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-blue-100 disabled:opacity-50 min-h-[44px] transition-all cursor-pointer active:scale-95"
                >
-                 <UserPlus size={18} /> Ongeza Mchezaji
+                 <UserPlus size={18} /> 
+                 <span>Ongeza Mchezaji Mpya</span>
                </button>
             </div>
 
-            {/* Players Grid - 2 per row on mobile */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+            {/* Players Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               {players.map(player => (
-                <div key={player.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm relative group">
-                  <div className="aspect-square bg-slate-100 relative">
-                    <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
-                    <button 
-                      onClick={() => handleDelete(player.id, 'players')}
-                      className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-xl transition-all min-w-[36px] min-h-[36px] flex items-center justify-center shadow-md active:scale-95"
-                      title="Futa Mchezaji"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                <div key={player.id} className="bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col">
+                  {/* Photo with Position / Jersey Badge */}
+                  <div className="aspect-square bg-slate-100 relative overflow-hidden group">
+                    <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    
+                    {player.jerseyNumber && (
+                      <div className="absolute top-2.5 left-2.5 bg-slate-900/85 backdrop-blur-sm text-white font-black text-xs px-2.5 py-1 rounded-lg border border-white/20 shadow">
+                        #{player.jerseyNumber}
+                      </div>
+                    )}
+
+                    {player.position && (
+                      <div className="absolute bottom-2.5 left-2.5 bg-blue-600/90 backdrop-blur-sm text-white font-bold text-[10px] px-2 py-0.5 rounded-md shadow">
+                        {player.position}
+                      </div>
+                    )}
                   </div>
-                  <div className="p-3 sm:p-4 text-center">
-                    <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">{player.name}</h4>
+
+                  {/* Player Info & Actions */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-white">
+                    <div>
+                      <h4 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight truncate" title={player.name}>
+                        {player.name}
+                      </h4>
+                      <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                        {player.position ? player.position : 'Mchezaji wa Timu'} {player.jerseyNumber ? `• Jezi #${player.jerseyNumber}` : ''}
+                      </p>
+                    </div>
+
+                    {/* Action Buttons: Edit and Delete */}
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                      <button 
+                        onClick={() => handleOpenEditPlayer(player)}
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold text-xs rounded-xl transition-all border border-blue-100 active:scale-95 cursor-pointer min-h-[38px]"
+                        title="Badilisha Mchezaji"
+                      >
+                        <Pencil size={14} />
+                        <span>Badilisha</span>
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(player.id, 'players')}
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs rounded-xl transition-all border border-red-100 active:scale-95 cursor-pointer min-h-[38px]"
+                        title="Futa Mchezaji"
+                      >
+                        <Trash2 size={14} />
+                        <span>Futa</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
+
               {players.length === 0 && (
-                <div className="col-span-full py-12 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-                  <p className="text-slate-400">Hakuna mchezaji aliyesajiliwa bado.</p>
+                <div className="col-span-full py-16 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 space-y-3">
+                  <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+                    <Users size={28} />
+                  </div>
+                  <h4 className="font-bold text-slate-700 text-base">Hakuna mchezaji aliyesajiliwa bado</h4>
+                  <p className="text-slate-400 text-xs max-w-sm mx-auto">Bonyeza kitufe cha &quot;Ongeza Mchezaji Mpya&quot; hapo juu kuanza kusajili wachezaji wako.</p>
+                  <button 
+                    onClick={() => setIsAddingPlayer(true)}
+                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md"
+                  >
+                    <UserPlus size={16} /> Ongeza Mchezaji Sasa
+                  </button>
                 </div>
               )}
             </div>
           </motion.div>
         )}
 
+        {/* Staff Tab */}
         {activeTab === 'staff' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <div className="flex justify-between items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                <div>
-                  <h3 className="text-xl md:text-2xl font-black text-slate-900">Benchi la Ufundi</h3>
-                  <p className="text-slate-500 text-[11px] md:text-xs">Upeo ni viongozi 5. Sio lazima kufikisha viongozi 5 kamili ili kukamilisha usajili.</p>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
+                    <Settings className="text-blue-600" size={24} />
+                    <span>Benchi la Ufundi / Viongozi ({staff.length}/5)</span>
+                  </h3>
+                  <p className="text-slate-500 text-xs mt-1">Upeo ni viongozi 5. Unaweza kubadilisha taarifa (jina, wadhifa, picha) au kufuta kiongozi.</p>
                </div>
                <button 
                  onClick={() => setIsAddingStaff(true)}
                  disabled={staff.length >= 5}
-                 className="flex items-center gap-2 bg-blue-600 text-white px-3.5 sm:px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-blue-100 disabled:opacity-50 shrink-0 min-h-[44px]"
+                 className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-blue-100 disabled:opacity-50 shrink-0 min-h-[44px] transition-all cursor-pointer active:scale-95"
                >
-                 <UserPlus size={18} /> Ongeza Fundi
+                 <UserPlus size={18} /> 
+                 <span>Ongeza Kiongozi / Fundi</span>
                </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {staff.map(member => (
-                <div key={member.id} className="bg-white flex items-center p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm relative group">
-                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0">
-                      <img src={member.photoUrl} alt={member.name} className="w-full h-full object-cover" />
+                <div key={member.id} className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-all">
+                   <div className="flex items-center gap-3.5">
+                     <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                        <img src={member.photoUrl} alt={member.name} className="w-full h-full object-cover" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                        <h4 className="font-extrabold text-slate-900 text-sm sm:text-base truncate" title={member.name}>{member.name}</h4>
+                        <span className="inline-block mt-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 font-black text-[10px] tracking-wide uppercase rounded-md border border-emerald-200 truncate">
+                          {member.role}
+                        </span>
+                     </div>
                    </div>
-                   <div className="ml-3 sm:ml-4 flex-1 min-w-0">
-                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm truncate">{member.name}</h4>
-                      <p className="text-[10px] sm:text-xs font-bold text-blue-600 uppercase tracking-widest truncate">{member.role}</p>
+
+                   {/* Action Buttons */}
+                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                     <button 
+                        onClick={() => handleOpenEditStaff(member)}
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold text-xs rounded-xl transition-all border border-blue-100 active:scale-95 cursor-pointer min-h-[38px]"
+                        title="Badilisha Kiongozi"
+                     >
+                       <Pencil size={14} />
+                       <span>Badilisha</span>
+                     </button>
+                     <button 
+                        onClick={() => handleDelete(member.id, 'staff')}
+                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs rounded-xl transition-all border border-red-100 active:scale-95 cursor-pointer min-h-[38px]"
+                        title="Futa Kiongozi"
+                     >
+                       <Trash2 size={14} />
+                       <span>Futa</span>
+                     </button>
                    </div>
-                   <button 
-                      onClick={() => handleDelete(member.id, 'staff')}
-                      className="text-red-600 bg-red-50 hover:bg-red-600 hover:text-white p-2.5 rounded-xl transition-all min-w-[40px] min-h-[40px] flex items-center justify-center active:scale-95 border border-red-100"
-                      title="Futa Kiongozi"
-                   >
-                     <Trash2 size={18} />
-                   </button>
                 </div>
               ))}
+
               {staff.length === 0 && (
-                <div className="col-span-full py-12 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-                  <p className="text-slate-400">Hakuna benchi la ufundi lililosajiliwa bado.</p>
+                <div className="col-span-full py-16 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 space-y-3">
+                  <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+                    <Settings size={28} />
+                  </div>
+                  <h4 className="font-bold text-slate-700 text-base">Hakuna benchi la ufundi lililosajiliwa bado</h4>
+                  <p className="text-slate-400 text-xs max-w-sm mx-auto">Ongeza kocha mkuu, wasaidizi, daktari au viongozi wengine wa timu yako.</p>
                 </div>
               )}
             </div>
@@ -681,7 +876,7 @@ export default function TeamDashboard() {
         )}
       </div>
 
-      {/* Modals */}
+      {/* Modals for Add Player / Add Staff */}
       <AnimatePresence>
         {(isAddingPlayer || isAddingStaff) && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-2 sm:p-4">
@@ -689,39 +884,345 @@ export default function TeamDashboard() {
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 50, opacity: 0 }}
-              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-md shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-md shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto border border-slate-100"
             >
-              <h3 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-slate-900">
-                <UserPlus className="text-blue-600" size={24} />
-                {isAddingPlayer ? "Sajili Mchezaji" : "Sajili Benchi la Ufundi"}
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl sm:text-2xl font-black flex items-center gap-2 text-slate-900">
+                  <UserPlus className="text-blue-600" size={24} />
+                  <span>{isAddingPlayer ? "Sajili Mchezaji Mpya" : "Sajili Kiongozi wa Benchi"}</span>
+                </h3>
+                <button 
+                  onClick={() => {setIsAddingPlayer(false); setIsAddingStaff(false);}}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
               
               <form onSubmit={isAddingPlayer ? handleAddPlayer : handleAddStaff} className="space-y-4">
                  <div className="space-y-1">
-                   <label className="text-xs font-bold text-slate-500 uppercase">Jina Kamili</label>
-                   <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base" />
+                   <label className="text-xs font-bold text-slate-600 uppercase">Jina Kamili la {isAddingPlayer ? 'Mchezaji' : 'Kiongozi'} *</label>
+                   <input 
+                     required 
+                     type="text" 
+                     placeholder={isAddingPlayer ? "Mfano: John Juma Mwita" : "Mfano: Ally Bakari"}
+                     value={formData.name} 
+                     onChange={e => setFormData({...formData, name: e.target.value})} 
+                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium" 
+                   />
                  </div>
+
+                 {isAddingPlayer && (
+                   <div className="grid grid-cols-2 gap-3">
+                     <div className="space-y-1">
+                       <label className="text-xs font-bold text-slate-600 uppercase">Namba ya Jezi</label>
+                       <input 
+                         type="number" 
+                         placeholder="Mfano: 10" 
+                         value={formData.jerseyNumber} 
+                         onChange={e => setFormData({...formData, jerseyNumber: e.target.value})} 
+                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base" 
+                       />
+                     </div>
+                     <div className="space-y-1">
+                       <label className="text-xs font-bold text-slate-600 uppercase">Nafasi (Position)</label>
+                       <select 
+                         value={formData.position} 
+                         onChange={e => setFormData({...formData, position: e.target.value})}
+                         className="w-full px-3 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+                       >
+                         <option value="">Chagua Nafasi...</option>
+                         <option value="Golikipa">Golikipa (GK)</option>
+                         <option value="Beki">Beki (Defender)</option>
+                         <option value="Kiungo">Kiungo (Midfielder)</option>
+                         <option value="Mshambuliaji">Mshambuliaji (Forward)</option>
+                       </select>
+                     </div>
+                   </div>
+                 )}
 
                  {isAddingStaff && (
                    <div className="space-y-1">
-                     <label className="text-xs font-bold text-slate-500 uppercase">Wadhifa (Role)</label>
-                     <input required type="text" placeholder="Mfano: Head Coach, Assistant, Doctor..." value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
+                     <label className="text-xs font-bold text-slate-600 uppercase">Wadhifa / Cheo (Role) *</label>
+                     <input 
+                       required 
+                       type="text" 
+                       placeholder="Mfano: Kocha Mkuu, Kocha Msaidizi, Daktari..." 
+                       value={formData.role} 
+                       onChange={e => setFormData({...formData, role: e.target.value})} 
+                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base" 
+                     />
                    </div>
                  )}
 
                  <div className="space-y-1">
-                   <label className="text-xs font-bold text-slate-500 uppercase">Picha</label>
-                   <div className="relative border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center bg-slate-50">
-                      <input required type="file" accept="image/*" onChange={e => setFormData({...formData, photo: e.target.files?.[0] || null})} className="absolute inset-0 opacity-0 cursor-pointer min-h-[44px]" />
-                      <Camera size={26} className="mx-auto text-blue-600 mb-1" />
-                      <span className="text-xs font-bold text-slate-700 block truncate">{formData.photo ? formData.photo.name : "Gusa hapa kupakia picha kutoka simuni"}</span>
+                   <label className="text-xs font-bold text-slate-600 uppercase">Picha ya {isAddingPlayer ? 'Mchezaji' : 'Kiongozi'} *</label>
+                   <div className="relative border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-4 text-center bg-slate-50 hover:bg-blue-50/50 transition-all cursor-pointer">
+                      <input 
+                        required 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={e => setFormData({...formData, photo: e.target.files?.[0] || null})} 
+                        className="absolute inset-0 opacity-0 cursor-pointer min-h-[44px]" 
+                      />
+                      <Camera size={28} className="mx-auto text-blue-600 mb-1" />
+                      <span className="text-xs font-bold text-slate-700 block truncate">
+                        {formData.photo ? formData.photo.name : "Gusa hapa kupakia picha kutoka simuni au kifaa chako"}
+                      </span>
+                      <p className="text-[10px] text-slate-400 mt-1">Picha itaboreshwa kiotomatiki kwa upakiaji wa haraka</p>
                    </div>
                  </div>
 
                  <div className="flex gap-3 pt-2">
-                    <button type="button" onClick={() => {setIsAddingPlayer(false); setIsAddingStaff(false);}} className="flex-1 px-4 py-3.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors text-sm border border-slate-200 min-h-[48px]">Ghairi</button>
-                    <button type="submit" disabled={isUploading} className="flex-[2] bg-blue-600 text-white px-4 py-3.5 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 text-sm shadow-lg shadow-blue-100 min-h-[48px]">
-                       {isUploading ? "Inatunza..." : "Hifadhi Taarifa"}
+                    <button 
+                      type="button" 
+                      onClick={() => {setIsAddingPlayer(false); setIsAddingStaff(false);}} 
+                      className="flex-1 px-4 py-3.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors text-sm border border-slate-200 min-h-[48px] cursor-pointer"
+                    >
+                      Ghairi
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={isUploading} 
+                      className="flex-[2] bg-blue-600 text-white px-4 py-3.5 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 text-sm shadow-lg shadow-blue-100 min-h-[48px] cursor-pointer flex items-center justify-center gap-2"
+                    >
+                       {isUploading ? (
+                         <>
+                           <RefreshCw size={16} className="animate-spin" />
+                           <span>Inatunza...</span>
+                         </>
+                       ) : (
+                         <span>Hifadhi Mchezaji</span>
+                       )}
+                    </button>
+                 </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal for Editing Player (Badilisha Mchezaji) */}
+      <AnimatePresence>
+        {editingPlayer && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-2 sm:p-4">
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-md shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto border border-slate-100"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl sm:text-2xl font-black flex items-center gap-2 text-slate-900">
+                  <Pencil className="text-blue-600" size={24} />
+                  <span>Badilisha Mchezaji</span>
+                </h3>
+                <button 
+                  onClick={() => setEditingPlayer(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Current Preview */}
+              <div className="flex items-center gap-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+                <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-200 border border-slate-300 shrink-0">
+                  <img 
+                    src={editPlayerData.photo ? URL.createObjectURL(editPlayerData.photo) : editPlayerData.previewUrl} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm truncate">{editingPlayer.name}</h4>
+                  <p className="text-xs text-slate-500 font-medium">Unabadilisha taarifa za mchezaji huyu</p>
+                </div>
+              </div>
+              
+              <form onSubmit={handleUpdatePlayer} className="space-y-4">
+                 <div className="space-y-1">
+                   <label className="text-xs font-bold text-slate-600 uppercase">Jina Kamili la Mchezaji *</label>
+                   <input 
+                     required 
+                     type="text" 
+                     value={editPlayerData.name} 
+                     onChange={e => setEditPlayerData({...editPlayerData, name: e.target.value})} 
+                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium" 
+                   />
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-3">
+                   <div className="space-y-1">
+                     <label className="text-xs font-bold text-slate-600 uppercase">Namba ya Jezi</label>
+                     <input 
+                       type="number" 
+                       placeholder="Mfano: 10" 
+                       value={editPlayerData.jerseyNumber} 
+                       onChange={e => setEditPlayerData({...editPlayerData, jerseyNumber: e.target.value})} 
+                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base" 
+                     />
+                   </div>
+                   <div className="space-y-1">
+                     <label className="text-xs font-bold text-slate-600 uppercase">Nafasi (Position)</label>
+                     <select 
+                       value={editPlayerData.position} 
+                       onChange={e => setEditPlayerData({...editPlayerData, position: e.target.value})}
+                       className="w-full px-3 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+                     >
+                       <option value="">Chagua Nafasi...</option>
+                       <option value="Golikipa">Golikipa (GK)</option>
+                       <option value="Beki">Beki (Defender)</option>
+                       <option value="Kiungo">Kiungo (Midfielder)</option>
+                       <option value="Mshambuliaji">Mshambuliaji (Forward)</option>
+                     </select>
+                   </div>
+                 </div>
+
+                 <div className="space-y-1">
+                   <label className="text-xs font-bold text-slate-600 uppercase">Badili Picha ya Mchezaji (Hiyari)</label>
+                   <div className="relative border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-4 text-center bg-slate-50 hover:bg-blue-50/50 transition-all cursor-pointer">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={e => setEditPlayerData({...editPlayerData, photo: e.target.files?.[0] || null})} 
+                        className="absolute inset-0 opacity-0 cursor-pointer min-h-[44px]" 
+                      />
+                      <Camera size={26} className="mx-auto text-blue-600 mb-1" />
+                      <span className="text-xs font-bold text-slate-700 block truncate">
+                        {editPlayerData.photo ? `Picha Mpya: ${editPlayerData.photo.name}` : "Gusa hapa kubadili picha (au acha kama ilivyo)"}
+                      </span>
+                   </div>
+                 </div>
+
+                 <div className="flex gap-3 pt-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setEditingPlayer(null)} 
+                      className="flex-1 px-4 py-3.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors text-sm border border-slate-200 min-h-[48px] cursor-pointer"
+                    >
+                      Ghairi
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={isUpdating} 
+                      className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3.5 rounded-xl font-bold disabled:opacity-50 text-sm shadow-lg shadow-emerald-100 min-h-[48px] cursor-pointer flex items-center justify-center gap-2"
+                    >
+                       {isUpdating ? (
+                         <>
+                           <RefreshCw size={16} className="animate-spin" />
+                           <span>Inahifadhi...</span>
+                         </>
+                       ) : (
+                         <span>Hifadhi Mabadiliko</span>
+                       )}
+                    </button>
+                 </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal for Editing Staff (Badilisha Kiongozi) */}
+      <AnimatePresence>
+        {editingStaff && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-2 sm:p-4">
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-md shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto border border-slate-100"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl sm:text-2xl font-black flex items-center gap-2 text-slate-900">
+                  <Pencil className="text-blue-600" size={24} />
+                  <span>Badilisha Kiongozi</span>
+                </h3>
+                <button 
+                  onClick={() => setEditingStaff(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Current Preview */}
+              <div className="flex items-center gap-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+                <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-200 border border-slate-300 shrink-0">
+                  <img 
+                    src={editStaffData.photo ? URL.createObjectURL(editStaffData.photo) : editStaffData.previewUrl} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm truncate">{editingStaff.name}</h4>
+                  <p className="text-xs text-slate-500 font-medium">Wadhifa: {editingStaff.role}</p>
+                </div>
+              </div>
+              
+              <form onSubmit={handleUpdateStaff} className="space-y-4">
+                 <div className="space-y-1">
+                   <label className="text-xs font-bold text-slate-600 uppercase">Jina Kamili la Kiongozi *</label>
+                   <input 
+                     required 
+                     type="text" 
+                     value={editStaffData.name} 
+                     onChange={e => setEditStaffData({...editStaffData, name: e.target.value})} 
+                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium" 
+                   />
+                 </div>
+
+                 <div className="space-y-1">
+                   <label className="text-xs font-bold text-slate-600 uppercase">Wadhifa / Cheo (Role) *</label>
+                   <input 
+                     required 
+                     type="text" 
+                     placeholder="Mfano: Kocha Mkuu, Daktari..." 
+                     value={editStaffData.role} 
+                     onChange={e => setEditStaffData({...editStaffData, role: e.target.value})} 
+                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium" 
+                   />
+                 </div>
+
+                 <div className="space-y-1">
+                   <label className="text-xs font-bold text-slate-600 uppercase">Badili Picha ya Kiongozi (Hiyari)</label>
+                   <div className="relative border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-4 text-center bg-slate-50 hover:bg-blue-50/50 transition-all cursor-pointer">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={e => setEditStaffData({...editStaffData, photo: e.target.files?.[0] || null})} 
+                        className="absolute inset-0 opacity-0 cursor-pointer min-h-[44px]" 
+                      />
+                      <Camera size={26} className="mx-auto text-blue-600 mb-1" />
+                      <span className="text-xs font-bold text-slate-700 block truncate">
+                        {editStaffData.photo ? `Picha Mpya: ${editStaffData.photo.name}` : "Gusa hapa kubadili picha (au acha kama ilivyo)"}
+                      </span>
+                   </div>
+                 </div>
+
+                 <div className="flex gap-3 pt-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setEditingStaff(null)} 
+                      className="flex-1 px-4 py-3.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors text-sm border border-slate-200 min-h-[48px] cursor-pointer"
+                    >
+                      Ghairi
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={isUpdating} 
+                      className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3.5 rounded-xl font-bold disabled:opacity-50 text-sm shadow-lg shadow-emerald-100 min-h-[48px] cursor-pointer flex items-center justify-center gap-2"
+                    >
+                       {isUpdating ? (
+                         <>
+                           <RefreshCw size={16} className="animate-spin" />
+                           <span>Inahifadhi...</span>
+                         </>
+                       ) : (
+                         <span>Hifadhi Mabadiliko</span>
+                       )}
                     </button>
                  </div>
               </form>
@@ -732,3 +1233,4 @@ export default function TeamDashboard() {
     </div>
   );
 }
+

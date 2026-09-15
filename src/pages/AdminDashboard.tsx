@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   collection, 
@@ -7,10 +7,10 @@ import {
   updateDoc, 
   doc, 
   addDoc, 
-  deleteDoc,
-  orderBy,
-  getDocs,
-  where
+  deleteDoc, 
+  orderBy, 
+  getDocs, 
+  where 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Team, RegistrationPeriod, Match, OperationType, Player, Staff } from '../types';
@@ -36,17 +36,36 @@ import {
   Printer,
   Trash2,
   Edit3,
-  CalendarPlus
+  CalendarPlus,
+  Search,
+  Filter,
+  Check,
+  Sparkles,
+  SlidersHorizontal
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
-  const [activeTab, setActiveTab] = useState<'approvals' | 'periods' | 'matches' | 'groups'>('approvals');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'players' | 'periods' | 'matches' | 'groups'>('approvals');
   const [approvalFilter, setApprovalFilter] = useState<'PENDING' | 'CONFIRMED' | 'REJECTED'>('PENDING');
   const [periods, setPeriods] = useState<RegistrationPeriod[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  
+  // Tournament-wide Players & Staff State
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+  const [allStaff, setAllStaff] = useState<Staff[]>([]);
+  const [playerSearchQuery, setPlayerSearchQuery] = useState('');
+  const [playerTeamFilter, setPlayerTeamFilter] = useState('ALL');
+  const [playerPositionFilter, setPlayerPositionFilter] = useState('ALL');
+  
+  // Master PDF Export Modal State
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfExportTeamId, setPdfExportTeamId] = useState('ALL');
+  const [pdfExportLayout, setPdfExportLayout] = useState<'table' | 'cards'>('table');
+  const [pdfIncludeStaff, setPdfIncludeStaff] = useState(true);
+  const [pdfOnlyApprovedTeams, setPdfOnlyApprovedTeams] = useState(false);
 
   // Period Form
   const [seasonName, setSeasonName] = useState('');
@@ -227,6 +246,242 @@ export default function AdminDashboard() {
     printWindow.document.close();
   };
 
+  const handlePrintTournamentPlayers = (
+    targetTeamId: string = pdfExportTeamId,
+    layout: 'table' | 'cards' = pdfExportLayout,
+    includeStaff: boolean = pdfIncludeStaff,
+    onlyApproved: boolean = pdfOnlyApprovedTeams
+  ) => {
+    let targetTeams = [...teams];
+    if (targetTeamId !== 'ALL') {
+      targetTeams = targetTeams.filter(t => t.id === targetTeamId);
+    }
+    if (onlyApproved) {
+      targetTeams = targetTeams.filter(t => t.isApproved || t.paymentStatus === 'CONFIRMED');
+    }
+
+    // Sort teams alphabetically
+    targetTeams.sort((a, b) => a.name.localeCompare(b.name));
+
+    const totalFilteredPlayers = allPlayers.filter(p => targetTeams.some(t => t.id === p.teamId));
+    const totalFilteredStaff = allStaff.filter(s => targetTeams.some(t => t.id === s.teamId));
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Tafadhali ruhusu Pop-ups (Dirisha ibukizi) kwenye kivinjari chako ili kupakua orodha hii kama PDF.");
+      return;
+    }
+
+    const teamsSectionsHtml = targetTeams.map((team, tIdx) => {
+      const teamPlayers = allPlayers.filter(p => p.teamId === team.id);
+      const teamStaffList = allStaff.filter(s => s.teamId === team.id);
+
+      // Sort players by jersey number
+      teamPlayers.sort((a, b) => (Number(a.jerseyNumber) || 999) - (Number(b.jerseyNumber) || 999));
+
+      let playersContentHtml = '';
+
+      if (layout === 'table') {
+        playersContentHtml = `
+          <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; page-break-inside: auto;">
+            <thead>
+              <tr style="background: #1e3a8a; color: #ffffff; text-align: left;">
+                <th style="padding: 8px 6px; width: 35px; text-align: center; border: 1px solid #1e3a8a;">#</th>
+                <th style="padding: 8px 6px; width: 45px; text-align: center; border: 1px solid #1e3a8a;">Picha</th>
+                <th style="padding: 8px 10px; border: 1px solid #1e3a8a;">Jina Kamili la Mchezaji</th>
+                <th style="padding: 8px 6px; width: 60px; text-align: center; border: 1px solid #1e3a8a;">Jezi</th>
+                <th style="padding: 8px 8px; width: 110px; border: 1px solid #1e3a8a;">Nafasi</th>
+                <th style="padding: 8px 8px; width: 110px; border: 1px solid #1e3a8a;">Namba ya Kitambulisho</th>
+                <th style="padding: 8px 8px; width: 90px; text-align: center; border: 1px solid #1e3a8a;">Saini / Ukaguzi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${teamPlayers.length > 0 ? teamPlayers.map((p, pIdx) => `
+                <tr style="background: ${pIdx % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid;">
+                  <td style="padding: 6px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #64748b;">${pIdx + 1}</td>
+                  <td style="padding: 4px; text-align: center; border: 1px solid #cbd5e1;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: #e2e8f0; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                      ${p.photoUrl ? `<img src="${p.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<span style="font-size: 8px; font-weight: bold; color: #64748b;">-</span>`}
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: 800; color: #0f172a;">${p.name}</td>
+                  <td style="padding: 6px; text-align: center; border: 1px solid #cbd5e1; font-weight: 900; color: #2563eb; font-size: 12px;">${p.jerseyNumber ? `#${p.jerseyNumber}` : '-'}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: 600; color: #334155;">${p.position || 'Haikutajwa'}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-size: 10px; color: #64748b; font-family: monospace;">${p.idNumber || '-'}</td>
+                  <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">
+                    <div style="border-bottom: 1px dotted #94a3b8; height: 16px;"></div>
+                  </td>
+                </tr>
+              `).join('') : `
+                <tr>
+                  <td colspan="7" style="padding: 12px; text-align: center; color: #94a3b8; font-style: italic; border: 1px solid #cbd5e1;">Hakuna wachezaji waliosajiliwa kwenye timu hii bado.</td>
+                </tr>
+              `}
+            </tbody>
+          </table>
+        `;
+      } else {
+        playersContentHtml = `
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; page-break-inside: auto;">
+            ${teamPlayers.length > 0 ? teamPlayers.map((p) => `
+              <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; text-align: center; background: #ffffff; page-break-inside: avoid;">
+                <div style="width: 58px; height: 58px; margin: 0 auto 6px; border-radius: 50%; overflow: hidden; background: #f1f5f9; border: 2px solid #94a3b8;">
+                  ${p.photoUrl ? `<img src="${p.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<div style="padding-top: 18px; color: #94a3b8; font-size: 8px; font-weight: bold;">BILA PICHA</div>`}
+                </div>
+                <div style="font-weight: 800; font-size: 11px; color: #0f172a; line-height: 1.2;">${p.name}</div>
+                <div style="font-size: 10px; color: #2563eb; font-weight: bold; margin-top: 3px;">
+                  ${p.jerseyNumber ? `#${p.jerseyNumber}` : ''} ${p.position ? `&bull; ${p.position}` : ''}
+                </div>
+                ${p.idNumber ? `<div style="font-size: 8px; color: #64748b; margin-top: 2px;">ID: ${p.idNumber}</div>` : ''}
+              </div>
+            `).join('') : '<p style="grid-column: span 4; font-size: 11px; color: #94a3b8; font-style: italic; padding: 10px; text-align: center;">Hakuna wachezaji waliosajiliwa kwenye timu hii.</p>'}
+          </div>
+        `;
+      }
+
+      let staffSectionHtml = '';
+      if (includeStaff && teamStaffList.length > 0) {
+        staffSectionHtml = `
+          <div style="margin-top: 12px; page-break-inside: avoid;">
+            <div style="font-size: 10px; font-weight: 900; color: #0f172a; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Benchi la Ufundi / Viongozi (${teamStaffList.length}):</div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+              ${teamStaffList.map(s => `
+                <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; background: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 28px; height: 28px; border-radius: 50%; overflow: hidden; background: #e2e8f0; shrink-0;">
+                    ${s.photoUrl ? `<img src="${s.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<div style="width:100%;height:100%;background:#cbd5e1;"></div>`}
+                  </div>
+                  <div style="overflow: hidden;">
+                    <div style="font-weight: 800; font-size: 10px; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.name}</div>
+                    <div style="font-size: 9px; color: #059669; font-weight: bold;">${s.role}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div style="margin-bottom: 24px; page-break-inside: auto; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; background: #ffffff;">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              ${team.logoUrl ? `<img src="${team.logoUrl}" style="width: 36px; height: 36px; object-fit: contain; border-radius: 6px; border: 1px solid #e2e8f0; padding: 2px;" />` : `<div style="width: 36px; height: 36px; background: #eff6ff; border-radius: 6px; border: 1px solid #bfdbfe; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #1e3a8a;">${tIdx + 1}</div>`}
+              <div>
+                <h3 style="margin: 0; font-size: 15px; font-weight: 900; color: #0f172a; text-transform: uppercase;">${team.name}</h3>
+                <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
+                  ${team.group ? `<strong>Kundi ${team.group}</strong> &bull; ` : ''}
+                  Hali: <strong style="color: ${team.paymentStatus === 'CONFIRMED' ? '#16a34a' : '#d97706'};">${team.paymentStatus === 'CONFIRMED' ? 'IMETHIBITISHWA' : 'INASUBIRI'}</strong> &bull;
+                  Usajili ID: #${team.id.substring(0, 8).toUpperCase()}
+                </div>
+              </div>
+            </div>
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; font-size: 11px; font-weight: 900; padding: 4px 10px; border-radius: 20px;">
+              ${teamPlayers.length} Wachezaji
+            </div>
+          </div>
+
+          ${playersContentHtml}
+          ${staffSectionHtml}
+        </div>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="sw">
+        <head>
+          <meta charset="UTF-8">
+          <title>ORODHA YA WACHEZAJI WOTE - UMTV CUP 2026</title>
+          <style>
+            @page { size: A4 portrait; margin: 10mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 15px; color: #0f172a; background: #ffffff; }
+            .no-print { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 12px 18px; border-radius: 12px; border: 1px solid #cbd5e1; }
+            .btn-print { background: #2563eb; color: #ffffff; border: none; padding: 10px 22px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+            .btn-print:hover { background: #1d4ed8; }
+            
+            .header-banner { text-align: center; border-bottom: 3px double #1e3a8a; padding-bottom: 12px; margin-bottom: 18px; }
+            .header-banner h1 { margin: 0; font-size: 22px; font-weight: 900; color: #1e3a8a; letter-spacing: 1.5px; }
+            .header-banner h2 { margin: 4px 0 0; font-size: 13px; color: #2563eb; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+            
+            .stats-bar { display: flex; justify-content: space-around; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-bottom: 20px; text-align: center; }
+            .stats-item { font-size: 11px; color: #475569; }
+            .stats-item strong { display: block; font-size: 16px; color: #0f172a; font-weight: 900; margin-top: 2px; }
+
+            .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; padding-top: 15px; border-top: 2px solid #cbd5e1; page-break-inside: avoid; }
+            .sig-box { text-align: center; }
+            .sig-line { border-bottom: 2px solid #334155; height: 35px; margin-bottom: 6px; }
+            .sig-title { font-size: 10px; font-weight: bold; color: #475569; text-transform: uppercase; }
+
+            @media print {
+              .no-print { display: none !important; }
+              body { padding: 0; }
+              table { page-break-inside: auto; }
+              tr { page-break-inside: avoid; page-break-after: auto; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="no-print">
+            <div>
+              <strong style="color: #0f172a; font-size: 14px;">Ripoti Rasmi ya Wachezaji Waliosajiliwa</strong>
+              <div style="font-size: 11px; color: #64748b;">Unaweza kuchapisha moja kwa moja au kuhifadhi kama faili la PDF (Save as PDF).</div>
+            </div>
+            <button class="btn-print" onclick="window.print()">
+              🖨️ Pakua / Chapisha PDF
+            </button>
+          </div>
+
+          <div class="header-banner">
+            <h1>UMTV CUP 2026</h1>
+            <h2>ORODHA RASMI YA WACHEZAJI NA BENCHI LA UFUNDI</h2>
+            <div style="font-size: 10px; color: #64748b; margin-top: 6px; font-weight: 600;">
+              Imetolewa Rasmi na Kamati Kuu ya Uendeshaji Mashindano &bull; Tarehe: ${new Date().toLocaleDateString('sw-TZ', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </div>
+          </div>
+
+          <div class="stats-bar">
+            <div class="stats-item">
+              Jumla ya Timu
+              <strong>${targetTeams.length}</strong>
+            </div>
+            <div class="stats-item">
+              Jumla ya Wachezaji
+              <strong style="color: #2563eb;">${totalFilteredPlayers.length}</strong>
+            </div>
+            <div class="stats-item">
+              Benchi la Ufundi
+              <strong style="color: #059669;">${totalFilteredStaff.length}</strong>
+            </div>
+            <div class="stats-item">
+              Muundo wa Orodha
+              <strong>${layout === 'table' ? 'Jedwali Rasmi la Ukaguzi' : 'Kadi za Picha'}</strong>
+            </div>
+          </div>
+
+          ${teamsSectionsHtml}
+
+          <div class="signatures">
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Mratibu Mkuu wa Mashindano</div>
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Mkuu wa Kamati ya Waamuzi</div>
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Mwenyekiti Kamati ya Usajili</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   useEffect(() => {
     const unsubTeams = onSnapshot(collection(db, 'teams'), (snap) => {
       setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() } as Team)));
@@ -246,12 +501,56 @@ export default function AdminDashboard() {
       handleFirestoreError(error, OperationType.GET, 'matches');
     });
 
+    const unsubPlayers = onSnapshot(collection(db, 'players'), (snap) => {
+      setAllPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() } as Player)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'players');
+    });
+
+    const unsubStaff = onSnapshot(collection(db, 'staff'), (snap) => {
+      setAllStaff(snap.docs.map(d => ({ id: d.id, ...d.data() } as Staff)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'staff');
+    });
+
     return () => {
       unsubTeams();
       unsubPeriods();
       unsubMatches();
+      unsubPlayers();
+      unsubStaff();
     };
   }, []);
+
+  const filteredAllPlayers = useMemo(() => {
+    return allPlayers.filter(player => {
+      // Search query match
+      if (playerSearchQuery.trim()) {
+        const q = playerSearchQuery.toLowerCase();
+        const matchName = player.name?.toLowerCase().includes(q);
+        const matchJersey = String(player.jerseyNumber || '').includes(q);
+        const matchPosition = player.position?.toLowerCase().includes(q);
+        const matchId = player.idNumber?.toLowerCase().includes(q);
+        const team = teams.find(t => t.id === player.teamId);
+        const matchTeam = team?.name?.toLowerCase().includes(q);
+        if (!matchName && !matchJersey && !matchPosition && !matchId && !matchTeam) {
+          return false;
+        }
+      }
+
+      // Team Filter
+      if (playerTeamFilter !== 'ALL' && player.teamId !== playerTeamFilter) {
+        return false;
+      }
+
+      // Position Filter
+      if (playerPositionFilter !== 'ALL' && player.position !== playerPositionFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [allPlayers, playerSearchQuery, playerTeamFilter, playerPositionFilter, teams]);
 
   const handleApprove = async (teamId: string, status: 'CONFIRMED' | 'REJECTED') => {
     try {
@@ -455,31 +754,65 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-3">
-        <div className="bg-blue-600 p-3 rounded-2xl text-white">
-          <ShieldCheck size={32} />
+      {/* Admin Top Header Banner with Master Stats & Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="bg-blue-600 p-3.5 rounded-2xl text-white shadow-lg shadow-blue-200 shrink-0">
+            <ShieldCheck size={32} />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight">Panel ya Utawala (Admin)</h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+              Usimamizi kamili wa mashindano, wachezaji, madirisha ya usajili na ratiba za UMTV CUP
+            </p>
+          </div>
         </div>
-        <h1 className="text-3xl font-black text-slate-900 uppercase">Panel ya Utawala (Admin)</h1>
+
+        {/* Master PDF Download Action */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => {
+              setPdfExportTeamId('ALL');
+              setPdfModalOpen(true);
+            }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl font-black text-xs sm:text-sm shadow-lg shadow-blue-200 transition-all cursor-pointer active:scale-95 shrink-0"
+            title="Pakua orodha kamili ya wachezaji wote waliosajiliwa kwenye mashindano katika PDF"
+          >
+            <Download size={18} />
+            <span>Pakua Orodha ya Wachezaji Wote (PDF)</span>
+          </button>
+        </div>
       </div>
 
       {/* Admin Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0">
         {[
-          { id: 'approvals', label: 'Uthibitisho', icon: CheckCircle },
-          { id: 'periods', label: 'Madirisha', icon: Calendar },
-          { id: 'matches', label: 'Ratiba', icon: Trophy },
+          { id: 'approvals', label: 'Uthibitisho', icon: CheckCircle, count: teams.filter(t => t.paymentStatus === 'PENDING').length },
+          { id: 'players', label: 'Wachezaji Wote', icon: Users, count: allPlayers.length },
+          { id: 'periods', label: 'Madirisha', icon: Calendar, count: periods.length },
+          { id: 'matches', label: 'Ratiba', icon: Trophy, count: matches.length },
           { id: 'groups', label: 'Makundi & Msimamo', icon: Layers }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-4 md:px-6 py-3 rounded-xl font-bold transition-all shrink-0 text-sm md:text-base border border-slate-100",
-              activeTab === tab.id ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-white text-slate-400 hover:text-slate-600 shadow-sm"
+              "flex items-center gap-2 px-4 md:px-5 py-3 rounded-xl font-bold transition-all shrink-0 text-xs sm:text-sm border border-slate-100 shadow-sm",
+              activeTab === tab.id 
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-200" 
+                : "bg-white text-slate-500 hover:text-slate-900"
             )}
           >
             <tab.icon size={16} />
-            {tab.label}
+            <span>{tab.label}</span>
+            {tab.count !== undefined && (
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[10px] font-black",
+                activeTab === tab.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+              )}>
+                {tab.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -591,6 +924,212 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+          </motion.div>
+        )}
+
+        {/* Tab ya Wachezaji Wote (All Players Directory) */}
+        {activeTab === 'players' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            {/* Header & Master Controls */}
+            <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-100 shadow-sm space-y-5">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                    <Users className="text-blue-600" size={24} />
+                    <span>Orodha ya Wachezaji Wote Waliosajiliwa</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Jumla ya wachezaji <strong className="text-blue-600 font-black">{allPlayers.length}</strong> kutoka timu <strong className="text-slate-800 font-black">{teams.length}</strong> zilizosajiliwa kwenye mashindano.
+                  </p>
+                </div>
+
+                {/* PDF Export Action Buttons */}
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setPdfExportTeamId(playerTeamFilter);
+                      setPdfExportLayout('table');
+                      setPdfModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-blue-200 transition-all cursor-pointer active:scale-95"
+                    title="Pakua Jedwali Rasmi la Ukaguzi wa Mechi katika PDF"
+                  >
+                    <Printer size={16} />
+                    <span>Pakua Orodha (PDF)</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePrintTournamentPlayers(playerTeamFilter, 'table', true, false)}
+                    className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors"
+                    title="Chapisha / Pakua Papo Hapo Jedwali la Ukaguzi"
+                  >
+                    <FileText size={15} />
+                    <span className="hidden sm:inline">Jedwali la Mechi</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePrintTournamentPlayers(playerTeamFilter, 'cards', true, false)}
+                    className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors"
+                    title="Chapisha / Pakua Papo Hapo Kadi za Picha"
+                  >
+                    <Layers size={15} />
+                    <span className="hidden sm:inline">Kadi za Picha</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Search and Filters */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Search Bar */}
+                <div className="relative lg:col-span-2">
+                  <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Tafuta mchezaji, jezi #, ID au jina la timu..."
+                    value={playerSearchQuery}
+                    onChange={e => setPlayerSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-xs sm:text-sm font-medium transition-all"
+                  />
+                  {playerSearchQuery && (
+                    <button
+                      onClick={() => setPlayerSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Team Filter */}
+                <div className="space-y-1">
+                  <select
+                    value={playerTeamFilter}
+                    onChange={e => setPlayerTeamFilter(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold text-slate-700 focus:border-blue-500 outline-none bg-white"
+                  >
+                    <option value="ALL">Timu Zote ({teams.length})</option>
+                    {teams.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Position Filter */}
+                <div className="space-y-1">
+                  <select
+                    value={playerPositionFilter}
+                    onChange={e => setPlayerPositionFilter(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold text-slate-700 focus:border-blue-500 outline-none bg-white"
+                  >
+                    <option value="ALL">Nafasi Zote</option>
+                    <option value="Golikipa">Golikipa</option>
+                    <option value="Beki">Beki</option>
+                    <option value="Kiungo">Kiungo</option>
+                    <option value="Mshambuliaji">Mshambuliaji</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Filter indicators */}
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                <span>
+                  Inaonyesha wachezaji <strong className="text-slate-900 font-bold">{filteredAllPlayers.length}</strong> kati ya <strong className="text-slate-900 font-bold">{allPlayers.length}</strong>
+                </span>
+                {(playerSearchQuery || playerTeamFilter !== 'ALL' || playerPositionFilter !== 'ALL') && (
+                  <button
+                    onClick={() => {
+                      setPlayerSearchQuery('');
+                      setPlayerTeamFilter('ALL');
+                      setPlayerPositionFilter('ALL');
+                    }}
+                    className="text-blue-600 font-bold hover:underline"
+                  >
+                    Futa Vichujio (Reset)
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Players Grid Display */}
+            {filteredAllPlayers.length === 0 ? (
+              <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center space-y-3">
+                <Users size={48} className="text-slate-300 mx-auto" />
+                <h4 className="font-extrabold text-slate-800 text-base">Hakuna wachezaji waliopatikana</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  {allPlayers.length === 0 
+                    ? "Bado hakuna wachezaji waliosajiliwa na timu yoyote kwenye mashindano."
+                    : "Hakuna mchezaji anayelingana na utafutaji wako. Jaribu kubadilisha jina au vichujio vya timu na nafasi."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+                {filteredAllPlayers.map((player) => {
+                  const team = teams.find(t => t.id === player.teamId);
+                  return (
+                    <div 
+                      key={player.id} 
+                      className="bg-white rounded-2xl border border-slate-200/80 p-3 shadow-sm hover:shadow-md transition-all flex flex-col items-center text-center relative group"
+                    >
+                      {/* Jersey Badge */}
+                      <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-sm">
+                        #{player.jerseyNumber || '-'}
+                      </div>
+
+                      {/* Delete Quick Action */}
+                      <button
+                        onClick={() => handleDeletePlayer(player.id)}
+                        className="absolute top-2 left-2 p-1.5 rounded-lg bg-red-50 text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                        title="Futa Mchezaji"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+
+                      {/* Photo Thumbnail */}
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-50 border-2 border-slate-200 mb-2.5 shrink-0 shadow-inner">
+                        {player.photoUrl ? (
+                          <img 
+                            src={player.photoUrl} 
+                            alt={player.name} 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-100">
+                            <User size={26} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Player Info */}
+                      <h5 className="font-black text-slate-900 text-xs line-clamp-1 w-full" title={player.name}>
+                        {player.name}
+                      </h5>
+
+                      {/* Position */}
+                      <span className="text-[10px] font-black text-blue-600 uppercase tracking-wider mt-0.5">
+                        {player.position || 'Mchezaji'}
+                      </span>
+
+                      {/* Team Name with Icon */}
+                      <div className="mt-2 pt-2 border-t border-slate-100 w-full flex items-center justify-center gap-1.5 text-[10px] text-slate-600 font-bold">
+                        {team?.logoUrl ? (
+                          <img src={team.logoUrl} alt="" className="w-3.5 h-3.5 object-contain shrink-0" />
+                        ) : (
+                          <Trophy size={11} className="text-amber-500 shrink-0" />
+                        )}
+                        <span className="truncate max-w-[90px]">{team?.name || 'Timu'}</span>
+                      </div>
+
+                      {player.idNumber && (
+                        <span className="text-[9px] text-slate-400 font-mono mt-0.5">
+                          ID: {player.idNumber}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -1467,6 +2006,150 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal ya Kupakua PDF ya Wachezaji Wote */}
+      {pdfModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-6 relative"
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setPdfModalOpen(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shrink-0">
+                <Download size={26} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900">Pakua Orodha ya Wachezaji (PDF)</h3>
+                <p className="text-xs text-slate-500 font-medium">UMTV CUP 2026 - Orodha Rasmi ya Mashindano</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Filter Timu */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                  Chagua Timu:
+                </label>
+                <select
+                  value={pdfExportTeamId}
+                  onChange={e => setPdfExportTeamId(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-all"
+                >
+                  <option value="ALL">Timu Zote kwenye Mashindano ({teams.length} Timu)</option>
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id}>{t.name} ({allPlayers.filter(p => p.teamId === t.id).length} Wachezaji)</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Mtindo wa PDF (Layout) */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                  Muundo / Mtindo wa PDF:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPdfExportLayout('table')}
+                    className={cn(
+                      "p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer",
+                      pdfExportLayout === 'table'
+                        ? "border-blue-600 bg-blue-50/70 text-blue-900 shadow-sm"
+                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <FileText size={18} className={pdfExportLayout === 'table' ? 'text-blue-600' : 'text-slate-400'} />
+                      {pdfExportLayout === 'table' && <CheckCircle size={16} className="text-blue-600" />}
+                    </div>
+                    <span className="font-extrabold text-xs mt-1">Jedwali Rasmi</span>
+                    <span className="text-[10px] text-slate-500 leading-tight">Inafaa kwa ukaguzi wa mechi na marefa</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPdfExportLayout('cards')}
+                    className={cn(
+                      "p-3.5 rounded-2xl border text-left flex flex-col gap-1 transition-all cursor-pointer",
+                      pdfExportLayout === 'cards'
+                        ? "border-blue-600 bg-blue-50/70 text-blue-900 shadow-sm"
+                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <Layers size={18} className={pdfExportLayout === 'cards' ? 'text-blue-600' : 'text-slate-400'} />
+                      {pdfExportLayout === 'cards' && <CheckCircle size={16} className="text-blue-600" />}
+                    </div>
+                    <span className="font-extrabold text-xs mt-1">Kadi zenye Picha</span>
+                    <span className="text-[10px] text-slate-500 leading-tight">Inaonyesha picha na namba za jezi</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Chaguzi za Ziada (Checkboxes) */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer text-xs font-bold text-slate-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={pdfIncludeStaff}
+                    onChange={e => setPdfIncludeStaff(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                  />
+                  <span>Jumuisha pia Benchi la Ufundi / Viongozi wa Timu</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer text-xs font-bold text-slate-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={pdfOnlyApprovedTeams}
+                    onChange={e => setPdfOnlyApprovedTeams(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                  />
+                  <span>Timu zilizothibitishwa pekee (Confirmed Teams)</span>
+                </label>
+              </div>
+
+              {/* Summary badge */}
+              <div className="text-center text-xs text-slate-500 bg-blue-50/50 py-2.5 px-4 rounded-xl border border-blue-100/50 font-medium">
+                📄 Faili la PDF litafunguka kwenye dirisha jipya la printi tayari kwa kuhifadhi (Save as PDF) au kuchapisha.
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setPdfModalOpen(false)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors"
+              >
+                Ghaili
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handlePrintTournamentPlayers(pdfExportTeamId, pdfExportLayout, pdfIncludeStaff, pdfOnlyApprovedTeams);
+                  setPdfModalOpen(false);
+                }}
+                className="flex-2 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-xl text-xs shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Printer size={16} />
+                <span>Fungua &amp; Pakua PDF</span>
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
