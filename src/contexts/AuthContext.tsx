@@ -72,10 +72,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               phoneNumber: data.phoneNumber
             });
             setProfile(data);
+            localStorage.setItem('sokapro_profile', JSON.stringify(data));
           } else {
-            localStorage.removeItem('sokapro_uid');
-            setUser(null);
-            setProfile(null);
+            // Check if we have cached profile in localStorage (e.g. when Firestore hits quota limit or offline)
+            const cachedProfileStr = localStorage.getItem('sokapro_profile');
+            if (cachedProfileStr) {
+              try {
+                const cachedProfile = JSON.parse(cachedProfileStr);
+                setUser({
+                  uid: storedUid,
+                  email: cachedProfile.email,
+                  displayName: cachedProfile.displayName,
+                  phoneNumber: cachedProfile.phoneNumber
+                });
+                setProfile(cachedProfile);
+              } catch (parseErr) {
+                localStorage.removeItem('sokapro_uid');
+                localStorage.removeItem('sokapro_profile');
+                setUser(null);
+                setProfile(null);
+              }
+            } else {
+              localStorage.removeItem('sokapro_uid');
+              localStorage.removeItem('sokapro_profile');
+              setUser(null);
+              setProfile(null);
+            }
           }
         } else {
           setUser(null);
@@ -267,6 +289,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     localStorage.removeItem('sokapro_uid');
+    localStorage.removeItem('sokapro_profile');
     setUser(null);
     setProfile(null);
   };
@@ -276,7 +299,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userRef = doc(db, 'users', user.uid);
       try {
         await setDoc(userRef, { role: newRole }, { merge: true });
-        setProfile(prev => prev ? { ...prev, role: newRole } : null);
+        setProfile(prev => {
+          const updated = prev ? { ...prev, role: newRole } : null;
+          if (updated) {
+            localStorage.setItem('sokapro_profile', JSON.stringify(updated));
+          }
+          return updated;
+        });
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
       }

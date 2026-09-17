@@ -42,6 +42,7 @@ export default function Home() {
       setMatches(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match)));
       setLoading(false);
     }, (error) => {
+      setLoading(false);
       handleFirestoreError(error, OperationType.GET, 'matches');
     });
 

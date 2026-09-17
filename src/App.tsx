@@ -22,6 +22,8 @@ import Login from './pages/Login';
 import RegisterTeam from './pages/RegisterTeam';
 import TeamDashboard from './pages/TeamDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import { QuotaBanner } from './components/QuotaBanner';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { cn } from './lib/utils';
 import tournamentLogo from './assets/images/tournament_logo_1785243137783.jpg';
 
@@ -261,23 +263,26 @@ function Navbar() {
 
 export default function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900 pb-20 md:pb-16">
-          <Navbar />
-          <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-10">
-            <AnimatePresence mode="wait">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register-team" element={<RegisterTeam />} />
-                <Route path="/team/*" element={<TeamDashboard />} />
-                <Route path="/admin/*" element={<AdminDashboard />} />
-              </Routes>
-            </AnimatePresence>
-          </main>
-        </div>
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900 pb-20 md:pb-16">
+            <QuotaBanner />
+            <Navbar />
+            <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-10">
+              <AnimatePresence mode="wait">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register-team" element={<RegisterTeam />} />
+                  <Route path="/team/*" element={<TeamDashboard />} />
+                  <Route path="/admin/*" element={<AdminDashboard />} />
+                </Routes>
+              </AnimatePresence>
+            </main>
+          </div>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }

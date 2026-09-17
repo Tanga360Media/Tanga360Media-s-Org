@@ -88,6 +88,7 @@ export default function TeamDashboard() {
       }
       setLoading(false);
     }, (error) => {
+      setLoading(false);
       handleFirestoreError(error, OperationType.GET, 'teams');
     });
 
